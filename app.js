@@ -198,6 +198,14 @@ function renderDebug(analysis) {
   final.append(finalCopy);
   body.append(final);
 
+  const routeStage = node('article', 'debug-stage');
+  routeStage.append(node('span', 'debug-number', '7'));
+  const routeCopy = node('div');
+  routeCopy.append(node('strong', '', analysis.next_question?.ask ? 'Выбрано следующее уточнение' : 'Выбран итоговый маршрут'));
+  routeCopy.append(node('p', '', analysis.next_question?.ask ? analysis.next_question.text : (analysis.routing?.title || 'Маршрут не определён')));
+  routeStage.append(routeCopy);
+  body.append(routeStage);
+
   if (analysis.missing_facts?.length) {
     const missing = node('div', 'debug-missing');
     missing.append(node('strong', '', 'Каких данных не хватает'));
@@ -208,6 +216,54 @@ function renderDebug(analysis) {
   }
   wrapper.append(body);
   return wrapper;
+}
+
+function renderRouting(route, payload) {
+  if (!route) return null;
+  const labels = {
+    self_service: 'Можно действовать самостоятельно',
+    community_question: 'Подготовить вопрос для сообщества',
+    professional_help: 'Возможно, нужна профессиональная помощь',
+    out_of_scope: 'Вопрос пока отсутствует в базе'
+  };
+  const box = node('section', 'route-decision route-' + route.type);
+  box.append(node('div', 'route-kicker', 'Результат маршрутизации'));
+  box.append(node('h3', '', route.title || labels[route.type]));
+  box.append(node('p', 'route-explanation', route.explanation));
+
+  if (route.type === 'self_service' && payload.sources?.[0]) {
+    const link = node('a', 'route-action', 'Открыть официальный источник →');
+    link.href = payload.sources[0].source_url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    box.append(link);
+  }
+
+  if (route.type === 'community_question' && route.prepared_question) {
+    const prepared = node('div', 'prepared-question');
+    prepared.append(node('strong', '', 'Подготовленный вопрос'));
+    prepared.append(node('p', '', route.prepared_question));
+    const copy = node('button', 'route-action', 'Скопировать вопрос');
+    copy.type = 'button';
+    copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(route.prepared_question);
+        copy.textContent = 'Скопировано ✓';
+      } catch (_) {
+        copy.textContent = 'Выделите и скопируйте текст';
+      }
+    });
+    prepared.append(copy);
+    box.append(prepared);
+  }
+
+  if (route.type === 'professional_help') {
+    box.append(node('p', 'route-note', 'В рабочей версии здесь можно подключить проверенного специалиста или коммерческую службу. Сейчас это только демонстрация маршрута.'));
+  }
+  if (route.type === 'out_of_scope') {
+    box.append(node('p', 'route-note', 'Система не будет придумывать ответ по теме, которой нет среди проверенных материалов.'));
+  }
+  return box;
 }
 
 function renderPayload(payload) {
@@ -275,6 +331,9 @@ function renderPayload(payload) {
     });
     dialogue.append(options);
     card.append(dialogue);
+  } else if (answer.routing) {
+    const route = renderRouting(answer.routing, payload);
+    if (route) card.append(route);
   }
 
   if (payload.sources?.length) {
@@ -297,7 +356,7 @@ function renderPayload(payload) {
     limits.append(node('strong', '', 'Ограничения: '), document.createTextNode(answer.limitations.join(' ')));
     card.append(limits);
   }
-  result.append(card, renderDebug(payload.analysis));
+  result.append(card, renderDebug({ ...payload.analysis, routing: answer.routing, next_question: answer.next_question }));
 
   if (dialogueAnswers.length) {
     const restart = node('button', 'restart-analysis', 'Начать разбор заново');
