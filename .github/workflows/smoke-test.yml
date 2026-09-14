@@ -1,4 +1,4 @@
-name: Smoke test navigator V2
+name: Smoke test navigator V3
 
 on:
   workflow_dispatch:
@@ -17,13 +17,15 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     env:
       ENDPOINT: https://fgadxhyeegncmyjepypg.supabase.co/functions/v1/semantic-search
       API_KEY: sb_publishable_Q1pZaATQwb6XomNXpXA8NQ_2pAtgAi7
     steps:
-      - name: Test answer, clarification and scope boundary
+      - name: Test concrete dialogue and four-way routing contract
         run: |
+          trap 'for f in ./*.json; do [ -f "$f" ] && { echo "--- $f"; jq . "$f"; }; done' ERR
+
           call_api() {
             local question="$1"
             local answers_json="$2"
@@ -31,21 +33,32 @@ jobs:
             local client_id
             client_id="$(cat /proc/sys/kernel/random/uuid)"
             jq -nc --arg q "$question" --arg id "$client_id" --argjson answers "$answers_json"               '{question:$q,client_id:$id,answers:$answers}' |
-              curl --silent --show-error --max-time 90                 -H "apikey: $API_KEY"                 -H "Content-Type: application/json"                 --data @- "$ENDPOINT" > "$output"
+              curl --fail-with-body --silent --show-error --max-time 90                 -H "apikey: $API_KEY"                 -H "Content-Type: application/json"                 --data @- "$ENDPOINT" > "$output"
           }
 
-          call_api "Мне больше 45 лет. На какой срок я могу получить авталу?" "[]" age.json
-          jq -e '.search_mode=="hybrid-rag" and (.answer.normalized_question|length>5) and (.analysis.vector.dimensions==1536) and (.analysis.retrieval|length>0) and .analysis.synthesis.grounded_only' age.json
+          question="Хочу уволиться по собственному желанию. Как получить авталу?"
+          answers="[]"
+          for step in 1 2 3 4; do
+            call_api "$question" "$answers" "dialogue-$step.json"
+            jq -e '.search_mode=="hybrid-rag" and (.answer.normalized_question|length>5) and (.analysis.vector.dimensions==1536) and (.answer.routing.type|IN("self_service","community_question","professional_help","out_of_scope"))' "dialogue-$step.json"
+            ask="$(jq -r '.answer.next_question.ask' "dialogue-$step.json")"
+            if [ "$ask" = "false" ]; then break; fi
+            next_text="$(jq -r '.answer.next_question.text' "dialogue-$step.json")"
+            if grep -Eiq 'какой.{0,30}факт|что.{0,30}можете.{0,30}назвать|выберите.{0,20}(факт|вопрос)' <<<"$next_text"; then
+              echo "Meta-question is forbidden: $next_text"
+              exit 1
+            fi
+            jq -e '(.answer.next_question.options|length)>=2 and (.answer.next_question.options|length)<=4' "dialogue-$step.json"
+            clarification="$(jq -c '{key:.answer.next_question.key,question:.answer.next_question.text,answer:.answer.next_question.options[0].label}' "dialogue-$step.json")"
+            answers="$(jq -nc --argjson old "$answers" --argjson item "$clarification" '$old + [$item]')"
+          done
+          jq -e '.answer.next_question.ask==false and (.answer.routing.type|IN("self_service","community_question","professional_help"))' "dialogue-$step.json"
 
-          ask="$(jq -r '.answer.next_question.ask' age.json)"
-          if [ "$ask" = "true" ]; then
-            clarification="$(jq -c '[{key:.answer.next_question.key,question:.answer.next_question.text,answer:.answer.next_question.options[0].label}]' age.json)"
-            call_api "Мне больше 45 лет. На какой срок я могу получить авталу?" "$clarification" clarified.json
-            jq -e '(.analysis.clarifications|length)==1 and (.answer.normalized_question|length>5)' clarified.json
-          fi
+          call_api "Почему первые пять дней безработицы мне не оплатили?" "[]" self-service.json
+          jq -e '.answer.routing.type=="self_service" and (.sources|length)>0' self-service.json
 
-          call_api "Работодатель отправляет меня в ХАЛАТ, но я не знаю на сколько." "[]" incomplete.json
-          jq -e '(.answer.normalized_question|length>5) and (.analysis.missing_facts|type=="array") and (.sources|length>0)' incomplete.json
+          call_api "Работодатель отправляет меня в ХАЛАТ, но срок не сообщил." "[]" incomplete.json
+          jq -e '.answer.next_question.ask==true and (.answer.next_question.text|test("какой.{0,30}факт|что.{0,30}можете.{0,30}назвать";"i")|not) and (.analysis.missing_facts|type=="array")' incomplete.json
 
           call_api "Как оформить заграничный паспорт?" "[]" outside.json
-          jq -e '.answer.status=="out_of_scope" and (.answer.applied_slugs|length)==0' outside.json
+          jq -e '.answer.status=="out_of_scope" and .answer.routing.type=="out_of_scope" and (.answer.applied_slugs|length)==0 and (.answer.next_question.ask==false)' outside.json
