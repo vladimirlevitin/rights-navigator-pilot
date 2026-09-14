@@ -161,8 +161,9 @@ function renderDebug(analysis) {
   const stages = [
     ['1', 'Принят вопрос', analysis.received_question],
     ['2', 'Стандартная формулировка', analysis.normalized_question],
-    ['3', 'Выделены факты', analysis.known_facts?.length ? analysis.known_facts.map(x => x.label + ': ' + x.value).join(' · ') : 'Явных фактов пока мало'],
-    ['4', 'Построен смысловой вектор', analysis.vector.model + ' · ' + analysis.vector.dimensions + ' чисел'],
+    ['3', 'Определён вид права', (analysis.intent?.label || 'тема не определена') + (analysis.intent?.focus && analysis.intent.focus !== 'general' ? ' · подтема: ' + analysis.intent.focus : '') + (analysis.intent?.matched_term ? ' · признак: «' + analysis.intent.matched_term + '»' : '')],
+    ['4', 'Выделены факты', [...(analysis.explicit_facts || []), ...(analysis.known_facts || [])].length ? [...(analysis.explicit_facts || []), ...(analysis.known_facts || [])].map(x => x.label + ': ' + x.value).join(' · ') : 'Явных фактов пока мало'],
+    ['5', 'Построен смысловой вектор', analysis.vector.model + ' · ' + analysis.vector.dimensions + ' чисел'],
   ];
   stages.forEach(([number, label, value]) => {
     const item = node('article', 'debug-stage');
@@ -174,7 +175,7 @@ function renderDebug(analysis) {
   });
 
   const retrieval = node('article', 'debug-stage debug-retrieval');
-  retrieval.append(node('span', 'debug-number', '5'));
+  retrieval.append(node('span', 'debug-number', '6'));
   const found = node('div');
   found.append(node('strong', '', 'Найдены релевантные материалы'));
   if (!analysis.retrieval?.length) found.append(node('p', '', 'Ни одна карточка не прошла порог уверенности.'));
@@ -191,7 +192,7 @@ function renderDebug(analysis) {
   body.append(retrieval);
 
   const final = node('article', 'debug-stage');
-  final.append(node('span', 'debug-number', '6'));
+  final.append(node('span', 'debug-number', '7'));
   const finalCopy = node('div');
   finalCopy.append(node('strong', '', 'Ответ собран по найденным материалам'));
   finalCopy.append(node('p', '', analysis.synthesis.model + ' · использовано карточек: ' + analysis.synthesis.used_cards + ' · внешние знания запрещены'));
@@ -199,7 +200,7 @@ function renderDebug(analysis) {
   body.append(final);
 
   const routeStage = node('article', 'debug-stage');
-  routeStage.append(node('span', 'debug-number', '7'));
+  routeStage.append(node('span', 'debug-number', '8'));
   const routeCopy = node('div');
   routeCopy.append(node('strong', '', analysis.next_question?.ask ? 'Выбрано следующее уточнение' : 'Выбран итоговый маршрут'));
   routeCopy.append(node('p', '', analysis.next_question?.ask ? analysis.next_question.text : (analysis.routing?.title || 'Маршрут не определён')));
