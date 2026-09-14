@@ -4,6 +4,7 @@ import { detectIntent, extractExplicitFacts } from '../supabase/functions/semant
 const cases = [
   ['дали инвалидность. могу просить пицуим на работе?', 'severance'],
   ['Я инвалид и продолжаю работать. Сохранится ли пособие?', 'disability'],
+  ['какая разница между медицинской и рабочей инвалидностью?', 'disability'],
   ['Работодатель отправил меня в ХАЛАТ на 45 дней', 'unpaid_leave'],
   ['Мне 46 лет. Сколько дней будут платить авталу?', 'unemployment'],
   ['Меня уволили, что мне положено?', 'employment_ambiguous'],
@@ -13,6 +14,11 @@ const cases = [
 for (const [question, expected] of cases) {
   assert.equal(detectIntent(question).key, expected, question)
 }
+
+const disabilityTerminology = detectIntent('какая разница между медицинской и рабочей инвалидностью?')
+assert.equal(disabilityTerminology.key, 'disability')
+assert.deepEqual(disabilityTerminology.topics, ['disability'])
+assert.notEqual(disabilityTerminology.key, 'out_of_scope')
 
 assert.deepEqual(detectIntent('Мне 46 лет. Сколько дней дадут авталу?').preferred_slugs, ['entitlement-days'])
 assert.deepEqual(detectIntent('Когда после увольнения зарегистрироваться для авталы?').preferred_slugs, ['register-employment-service', 'missed-appointment'])
