@@ -36,6 +36,7 @@ export function detectIntent(text) {
         if (/(?:сколько|максимум|на какой).{0,20}(?:дн|срок)|иждивен/i.test(query)) { focus = 'entitlement_duration'; preferred_slugs = ['entitlement-days'] }
         else if (/12.{0,12}18|стаж|страхов\w*\s+период|ткуфат\s+ахшар/i.test(query)) { focus = 'qualifying_period'; preferred_slugs = ['qualifying-period', 'eligibility-basics'] }
         else if (/когда.{0,20}(?:плат|деньг)|17.{0,8}чис|первые.{0,8}(?:5|пять)/i.test(query)) { focus = 'payment_timing'; preferred_slugs = ['payment-timing'] }
+        else if (/увол\w*.{0,25}собствен|сам\w*.{0,25}увол|хочу.{0,25}увол/i.test(query)) { focus = 'voluntary_resignation'; preferred_slugs = ['voluntary-resignation', 'register-employment-service'] }
         else if (/регистр|отмеч|явк|шерут\s+таасука|служб\w*\s+занятост/i.test(query)) { focus = 'registration'; preferred_slugs = ['register-employment-service', 'missed-appointment'] }
         else if (/за\s+границ|вылет|поездк|хуль/i.test(query)) { focus = 'travel'; preferred_slugs = ['travel-abroad'] }
         else if (/ацмаи|самозанят|предпринимател/i.test(query)) { focus = 'self_employed'; preferred_slugs = ['self-employed', 'eligibility-basics'] }

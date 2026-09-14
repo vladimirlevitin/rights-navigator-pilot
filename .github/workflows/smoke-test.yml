@@ -9,6 +9,7 @@ on:
       - "index.html"
       - "styles.css"
       - "supabase/functions/semantic-search/index.ts"
+      - "supabase/functions/semantic-search/intent.js"
       - ".github/workflows/smoke-test.yml"
 
 permissions:
@@ -40,7 +41,7 @@ jobs:
           answers="[]"
           for step in 1 2 3 4; do
             call_api "$question" "$answers" "dialogue-$step.json"
-            jq -e '.search_mode=="hybrid-rag" and (.answer.normalized_question|length>5) and (.analysis.vector.dimensions==1536) and (.answer.routing.type|IN("self_service","community_question","professional_help","out_of_scope"))' "dialogue-$step.json"
+            jq -e '.search_mode=="topic-gated-hybrid-rag" and (.answer.normalized_question|length>5) and (.analysis.vector.dimensions==1536) and (.answer.routing.type|IN("self_service","community_question","professional_help","out_of_scope"))' "dialogue-$step.json"
             ask="$(jq -r '.answer.next_question.ask' "dialogue-$step.json")"
             if [ "$ask" = "false" ]; then break; fi
             next_text="$(jq -r '.answer.next_question.text' "dialogue-$step.json")"
@@ -62,3 +63,15 @@ jobs:
 
           call_api "Как оформить заграничный паспорт?" "[]" outside.json
           jq -e '.answer.status=="out_of_scope" and .answer.routing.type=="out_of_scope" and (.answer.applied_slugs|length)==0 and (.answer.next_question.ask==false)' outside.json
+
+          call_api "Дали инвалидность. Могу просить пицуим на работе?" "[]" severance.json
+          jq -e '.analysis.intent.key=="severance" and .analysis.intent.focus=="health_resignation" and (.analysis.retrieval|length)>0 and all(.analysis.retrieval[]; .topic=="severance") and .answer.next_question.key=="termination_status"' severance.json
+
+          call_api "Работодатель отправил меня в ХАЛАТ на 45 дней. Положена ли автала?" "[]" halat.json
+          jq -e '.analysis.intent.key=="unpaid_leave" and any(.analysis.explicit_facts[]; .key=="halat_initiator") and any(.analysis.explicit_facts[]; .key=="halat_duration") and .answer.next_question.key=="paid_leave"' halat.json
+
+          call_api "Я получаю инвалидность и хочу выйти на работу. Отменят пособие?" "[]" disability.json
+          jq -e '.analysis.intent.key=="disability" and (.analysis.retrieval|length)>0 and all(.analysis.retrieval[]; .topic=="disability")' disability.json
+
+          call_api "Мне 46 лет. Сколько дней могут платить авталу?" "[]" duration.json
+          jq -e '.analysis.intent.focus=="entitlement_duration" and (.analysis.retrieval|length)==1 and .analysis.retrieval[0].slug=="entitlement-days" and .answer.next_question.ask==false' duration.json

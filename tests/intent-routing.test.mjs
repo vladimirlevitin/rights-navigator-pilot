@@ -16,6 +16,7 @@ for (const [question, expected] of cases) {
 
 assert.deepEqual(detectIntent('Мне 46 лет. Сколько дней дадут авталу?').preferred_slugs, ['entitlement-days'])
 assert.deepEqual(detectIntent('Когда после увольнения зарегистрироваться для авталы?').preferred_slugs, ['register-employment-service', 'missed-appointment'])
+assert.deepEqual(detectIntent('Хочу уволиться по собственному желанию. Как получить авталу?').preferred_slugs, ['voluntary-resignation', 'register-employment-service'])
 assert.deepEqual(detectIntent('Дали инвалидность. Могу просить пицуим?').preferred_slugs, ['severance-health-resignation', 'severance-medical-proof'])
 
 console.log(`intent routing: ${cases.length} checks passed`)
