@@ -6,10 +6,6 @@ const questionInput = document.querySelector('#question');
 const submitButton = document.querySelector('#submit-button');
 const result = document.querySelector('#result');
 const exampleList = document.querySelector('#example-list');
-let activeCard = null;
-let dialogueAnswers = [];
-let lastSearchMode = 'text';
-
 const EXAMPLE_VARIANTS = {
   1: [
     { label: 'Уволили — когда регистрироваться?', question: 'Меня уволили. Когда нужно зарегистрироваться в Службе занятости?' },
