@@ -26,7 +26,8 @@ jobs:
         run: |
           client_id="$(cat /proc/sys/kernel/random/uuid)"
           payload="$(jq -nc --arg q 'Мне больше 45 лет. На какой срок я могу получить авталу?' --arg id "$client_id" '{question:$q,client_id:$id,answers:[]}')"
-          response="$(curl --fail-with-body --silent --show-error --max-time 90             -H "apikey: $API_KEY"             -H "Content-Type: application/json"             --data "$payload" "$ENDPOINT")"
+          response="$(curl --silent --show-error --max-time 90             -H "apikey: $API_KEY"             -H "Content-Type: application/json"             --data "$payload" "$ENDPOINT")"
+          echo "$response" | jq .
           jq -e '
             .search_mode == "hybrid-rag" and
             (.answer.normalized_question | length > 5) and
