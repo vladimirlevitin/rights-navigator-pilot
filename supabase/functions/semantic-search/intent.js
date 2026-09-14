@@ -28,10 +28,23 @@ const RULES = [
 export function detectIntent(text) {
   const query = String(text || '').toLowerCase()
 
+  const disabilityOrHealth = /инвалид|нехут|נכות|нетрудоспособ|здоров|болезн|медицин/i.test(query)
+  const employerTermination = /(?:меня\s+)?(?:увольняют|увольняет|уволили|уволил)|работодатель.{0,35}(?:увольняет|уволил|сократил|прекращает|прекратил)/i.test(query)
+  if (disabilityOrHealth && employerTermination) {
+    return {
+      key: 'multi_rights',
+      label: 'увольнение при инвалидности — нужно проверить несколько прав',
+      topics: ['severance', 'unemployment', 'disability'],
+      focus: 'termination_with_disability',
+      preferred_slugs: [],
+      confidence: 'explicit',
+      matched_term: 'увольнение работодателем + инвалидность'
+    }
+  }
+
   // A planned job exit mentioned together with disability/health must not be
   // swallowed by the generic "disability + work" rule. The actionable event
   // is termination of employment, so first check the severance route.
-  const disabilityOrHealth = /инвалид|нехут|נכות|нетрудоспособ|здоров|болезн|медицин/i.test(query)
   const plannedExit = /(?:хочу|планирую|собираюсь).{0,35}(?:уйти|увол)|(?:уйти|уход).{0,25}(?:с|из)\s+работ/i.test(query)
   if (disabilityOrHealth && plannedExit) {
     return {
@@ -100,10 +113,10 @@ export function extractExplicitFacts(text) {
     || query.match(/(\d{1,3})\s*(?:дн|день|дня|дней)[^\n]{0,30}(?:халат|неоплачиваем)/i)
   if (days) facts.push({ key: 'halat_duration', label: 'Продолжительность ХАЛАТа', value: days[1] + ' дней' })
 
-  if (/дали\s+инвалид|установил\w*\s+инвалид|получа\w*\s+(?:пособие\s+по\s+)?инвалид/i.test(query)) {
+  if (/дали\s+инвалид|установил\w*\s+инвалид|получа\w*\s+(?:пособие\s+по\s+)?инвалид|у\s+меня\s+инвалид/i.test(query)) {
     facts.push({ key: 'disability_status', label: 'Инвалидность', value: 'установлена или пособие уже назначено' })
   }
-  if (/работодатель.{0,35}(?:уволил|сократил|прекратил)/i.test(query)) {
+  if (/(?:меня\s+)?(?:увольняют|увольняет|уволили|уволил)|работодатель.{0,35}(?:уволил|увольняет|сократил|прекратил)/i.test(query)) {
     facts.push({ key: 'termination_status', label: 'Прекращение работы', value: 'по инициативе работодателя' })
   } else if (/(?:хочу|планирую|собираюсь).{0,35}(?:увол|уйти(?:\s+с\s+работы)?)/i.test(query)) {
     facts.push({ key: 'termination_status', label: 'Прекращение работы', value: 'работник планирует увольнение' })
