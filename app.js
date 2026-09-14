@@ -10,6 +10,59 @@ let activeCard = null;
 let dialogueAnswers = [];
 let lastSearchMode = 'text';
 
+const EXAMPLE_VARIANTS = {
+  1: [
+    { label: 'Уволили — когда регистрироваться?', question: 'Меня уволили. Когда нужно зарегистрироваться в Службе занятости?' },
+    { label: 'Фирма закрылась', question: 'Фирма закрылась, и я остался без работы. Что нужно сделать в первую очередь?' },
+    { label: 'Когда идти на биржу труда?', question: 'После увольнения когда нужно идти регистрироваться на бирже труда?' },
+    { label: 'Первый день после увольнения', question: 'Я только что потеряла работу. Нужно ли сразу отмечаться в Службе занятости?' }
+  ],
+  2: [
+    { label: 'Ухудшили условия работы', question: 'Я уволилась сама из-за существенного ухудшения условий. Придётся ждать 90 дней?' },
+    { label: 'Ушла по состоянию здоровья', question: 'Я ушла с работы по медицинской причине. Можно ли не ждать 90 дней?' },
+    { label: 'Уволился сам — будет автала?', question: 'Я уволился по собственному желанию. Когда смогу получать пособие по безработице?' },
+    { label: 'Есть уважительная причина', question: 'Если была уважительная причина уволиться самому, выплатят ли авталу сразу?' }
+  ],
+  3: [
+    { label: 'Отправили в ХАЛАТ', question: 'Работодатель отправил меня в ХАЛАТ на 45 дней. Положена ли мне автала?' },
+    { label: 'Неоплачиваемый отпуск', question: 'Меня отправляют в неоплачиваемый отпуск. Могу ли я получить пособие?' },
+    { label: 'ХАЛАТ на месяц', question: 'Работодатель оформил ХАЛАТ на 30 дней. Что мне теперь делать?' },
+    { label: 'Временно нет работы', question: 'Работодатель временно остановил работу и не платит зарплату. Есть ли право на авталу?' }
+  ],
+  4: [
+    { label: 'Сколько нужно проработать?', question: 'Сколько месяцев нужно проработать, чтобы иметь право на авталу?' },
+    { label: 'Хватит ли стажа?', question: 'Я работал не весь последний год. Хватит ли страхового периода для пособия?' },
+    { label: '12 месяцев из 18', question: 'Как считается условие 12 месяцев работы из последних 18?' },
+    { label: 'Работала с перерывами', question: 'Я работала с перерывами. Как проверить, хватает ли месяцев для авталы?' }
+  ],
+  5: [
+    { label: 'Сколько дней будут платить?', question: 'Мне 46 лет. Сколько дней мне могут платить пособие по безработице?' },
+    { label: 'Возраст и срок авталы', question: 'Зависит ли количество дней выплаты авталы от возраста?' },
+    { label: 'На какой срок дадут пособие?', question: 'Как узнать, сколько дней пособия по безработице мне положено?' },
+    { label: 'Мне больше 45 лет', question: 'Мне больше 45 лет. На какой срок я могу получить авталу?' }
+  ],
+  6: [
+    { label: 'Куда пропали первые пять дней?', question: 'Почему первые пять дней безработицы мне не оплатили?' },
+    { label: 'Выплатили меньше ожидаемого', question: 'Пособие пришло меньше, чем я ожидал. Могли ли вычесть первые пять дней?' },
+    { label: 'Первые дни без оплаты', question: 'Правда ли, что в начале периода безработицы несколько дней не оплачивают?' },
+    { label: 'Как считают дни выплаты?', question: 'Как Битуах Леуми рассчитывает оплачиваемые дни и первые пять дней?' }
+  ]
+};
+
+function chooseExampleVariant(scenario) {
+  const variants = EXAMPLE_VARIANTS[scenario.id];
+  if (!variants?.length) return { label: scenario.hint, question: scenario.question };
+
+  const storageKey = `example_variant_${scenario.id}`;
+  let previous = -1;
+  try { previous = Number(sessionStorage.getItem(storageKey) ?? -1); } catch (_) {}
+
+  let index = Math.floor(Math.random() * variants.length);
+  if (variants.length > 1 && index === previous) index = (index + 1) % variants.length;
+  try { sessionStorage.setItem(storageKey, String(index)); } catch (_) {}
+  return variants[index];
+}
+
 const COMMON_REGISTERED = {
   key: 'registered',
   text: 'Вы уже зарегистрировались в Службе занятости?',
@@ -358,13 +411,14 @@ exampleList.addEventListener('click', event => {
 
 async function loadExamples() {
   try {
-    const scenarios = await api('demo_scenarios?select=question,hint&is_published=eq.true&order=display_order.asc&limit=6');
+    const scenarios = await api('demo_scenarios?select=id,question,hint&is_published=eq.true&order=display_order.asc&limit=6');
     if (!scenarios.length) return;
     exampleList.replaceChildren();
     scenarios.forEach(scenario => {
-      const button = node('button', '', scenario.hint);
+      const variant = chooseExampleVariant(scenario);
+      const button = node('button', '', variant.label);
       button.type = 'button';
-      button.dataset.question = scenario.question;
+      button.dataset.question = variant.question;
       exampleList.append(button);
     });
   } catch (error) {
