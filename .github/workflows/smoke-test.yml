@@ -17,22 +17,35 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 6
+    env:
+      ENDPOINT: https://fgadxhyeegncmyjepypg.supabase.co/functions/v1/semantic-search
+      API_KEY: sb_publishable_Q1pZaATQwb6XomNXpXA8NQ_2pAtgAi7
     steps:
-      - name: Ask a synthetic question
-        env:
-          ENDPOINT: https://fgadxhyeegncmyjepypg.supabase.co/functions/v1/semantic-search
-          API_KEY: sb_publishable_Q1pZaATQwb6XomNXpXA8NQ_2pAtgAi7
+      - name: Test answer, clarification and scope boundary
         run: |
-          client_id="$(cat /proc/sys/kernel/random/uuid)"
-          payload="$(jq -nc --arg q 'Мне больше 45 лет. На какой срок я могу получить авталу?' --arg id "$client_id" '{question:$q,client_id:$id,answers:[]}')"
-          response="$(curl --silent --show-error --max-time 90             -H "apikey: $API_KEY"             -H "Content-Type: application/json"             --data "$payload" "$ENDPOINT")"
-          echo "$response" | jq .
-          jq -e '
-            .search_mode == "hybrid-rag" and
-            (.answer.normalized_question | length > 5) and
-            (.answer.status | length > 0) and
-            (.analysis.vector.dimensions == 1536) and
-            (.analysis.retrieval | type == "array") and
-            (.analysis.synthesis.grounded_only == true)
-          ' <<<"$response"
+          call_api() {
+            local question="$1"
+            local answers_json="$2"
+            local output="$3"
+            local client_id
+            client_id="$(cat /proc/sys/kernel/random/uuid)"
+            jq -nc --arg q "$question" --arg id "$client_id" --argjson answers "$answers_json"               '{question:$q,client_id:$id,answers:$answers}' |
+              curl --silent --show-error --max-time 90                 -H "apikey: $API_KEY"                 -H "Content-Type: application/json"                 --data @- "$ENDPOINT" > "$output"
+          }
+
+          call_api "Мне больше 45 лет. На какой срок я могу получить авталу?" "[]" age.json
+          jq -e '.search_mode=="hybrid-rag" and (.answer.normalized_question|length>5) and (.analysis.vector.dimensions==1536) and (.analysis.retrieval|length>0) and .analysis.synthesis.grounded_only' age.json
+
+          ask="$(jq -r '.answer.next_question.ask' age.json)"
+          if [ "$ask" = "true" ]; then
+            clarification="$(jq -c '[{key:.answer.next_question.key,question:.answer.next_question.text,answer:.answer.next_question.options[0].label}]' age.json)"
+            call_api "Мне больше 45 лет. На какой срок я могу получить авталу?" "$clarification" clarified.json
+            jq -e '(.analysis.clarifications|length)==1 and (.answer.normalized_question|length>5)' clarified.json
+          fi
+
+          call_api "Работодатель отправляет меня в ХАЛАТ, но я не знаю на сколько." "[]" incomplete.json
+          jq -e '(.answer.normalized_question|length>5) and (.analysis.missing_facts|type=="array") and (.sources|length>0)' incomplete.json
+
+          call_api "Как оформить заграничный паспорт?" "[]" outside.json
+          jq -e '.answer.status=="out_of_scope" and (.answer.applied_slugs|length)==0' outside.json
