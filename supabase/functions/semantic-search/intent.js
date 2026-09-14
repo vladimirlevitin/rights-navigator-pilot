@@ -27,6 +27,24 @@ const RULES = [
 
 export function detectIntent(text) {
   const query = String(text || '').toLowerCase()
+
+  // A planned job exit mentioned together with disability/health must not be
+  // swallowed by the generic "disability + work" rule. The actionable event
+  // is termination of employment, so first check the severance route.
+  const disabilityOrHealth = /инвалид|нехут|נכות|нетрудоспособ|здоров|болезн|медицин/i.test(query)
+  const plannedExit = /(?:хочу|планирую|собираюсь).{0,35}(?:уйти|увол)|(?:уйти|уход).{0,25}(?:с|из)\s+работ/i.test(query)
+  if (disabilityOrHealth && plannedExit) {
+    return {
+      key: 'severance',
+      label: 'выходное пособие — пицуим',
+      topics: ['severance'],
+      focus: 'health_resignation',
+      preferred_slugs: ['severance-health-resignation', 'severance-medical-proof'],
+      confidence: 'explicit',
+      matched_term: 'инвалидность/здоровье + планируемый уход с работы'
+    }
+  }
+
   for (const rule of RULES) {
     const match = query.match(rule.pattern)
     if (match) {
@@ -87,7 +105,7 @@ export function extractExplicitFacts(text) {
   }
   if (/работодатель.{0,35}(?:уволил|сократил|прекратил)/i.test(query)) {
     facts.push({ key: 'termination_status', label: 'Прекращение работы', value: 'по инициативе работодателя' })
-  } else if (/(?:хочу|планирую|собираюсь).{0,25}увол/i.test(query)) {
+  } else if (/(?:хочу|планирую|собираюсь).{0,35}(?:увол|уйти(?:\s+с\s+работы)?)/i.test(query)) {
     facts.push({ key: 'termination_status', label: 'Прекращение работы', value: 'работник планирует увольнение' })
   } else if (/(?:уволил(?:ся|ась)|уш[её]л(?:а)?).{0,35}(?:сам|здоров|болезн)/i.test(query)) {
     facts.push({ key: 'termination_status', label: 'Прекращение работы', value: 'работник уволился сам' })
