@@ -1,0 +1,37 @@
+name: Smoke test navigator V2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app.js"
+      - "index.html"
+      - "styles.css"
+      - "supabase/functions/semantic-search/index.ts"
+      - ".github/workflows/smoke-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ask a synthetic question
+        env:
+          ENDPOINT: https://fgadxhyeegncmyjepypg.supabase.co/functions/v1/semantic-search
+          API_KEY: sb_publishable_Q1pZaATQwb6XomNXpXA8NQ_2pAtgAi7
+        run: |
+          client_id="$(cat /proc/sys/kernel/random/uuid)"
+          payload="$(jq -nc --arg q 'Мне больше 45 лет. На какой срок я могу получить авталу?' --arg id "$client_id" '{question:$q,client_id:$id,answers:[]}')"
+          response="$(curl --fail-with-body --silent --show-error --max-time 90             -H "apikey: $API_KEY"             -H "Content-Type: application/json"             --data "$payload" "$ENDPOINT")"
+          jq -e '
+            .search_mode == "hybrid-rag" and
+            (.answer.normalized_question | length > 5) and
+            (.answer.status | length > 0) and
+            (.analysis.vector.dimensions == 1536) and
+            (.analysis.retrieval | type == "array") and
+            (.analysis.synthesis.grounded_only == true)
+          ' <<<"$response"
