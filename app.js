@@ -8,6 +8,7 @@ const result = document.querySelector('#result');
 const exampleList = document.querySelector('#example-list');
 let activeCard = null;
 let dialogueAnswers = [];
+let lastSearchMode = 'text';
 
 const COMMON_REGISTERED = {
   key: 'registered',
@@ -158,7 +159,7 @@ function renderAnswer(items) {
   const top = node('div', 'answer-top');
   top.append(node('div', 'answer-icon', '✓'));
   const heading = node('div');
-  heading.append(node('div', 'answer-label', 'Наиболее подходящее правило'));
+  heading.append(node('div', 'answer-label', lastSearchMode === 'hybrid' ? 'Смысловой + текстовый поиск' : 'Наиболее подходящее правило'));
   heading.append(node('h2', '', primary.title));
   heading.append(node('p', 'short-answer', primary.short_answer));
   top.append(heading);
@@ -306,14 +307,32 @@ async function search(question) {
   submitButton.disabled = true;
   submitButton.firstElementChild.textContent = 'Ищу…';
   try {
-    const data = await api('rpc/search_knowledge', {
+    let clientId = sessionStorage.getItem('navigator_session_id');
+    if (!clientId) {
+      clientId = crypto.randomUUID();
+      sessionStorage.setItem('navigator_session_id', clientId);
+    }
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/semantic-search`, {
       method: 'POST',
-      body: JSON.stringify({ query_text: question, match_count: 5 })
+      headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, client_id: clientId })
     });
-    renderAnswer(data);
+    if (!response.ok) throw new Error(`semantic API ${response.status}`);
+    const payload = await response.json();
+    lastSearchMode = payload.search_mode || 'hybrid';
+    renderAnswer(payload.results || []);
   } catch (error) {
-    console.error(error);
-    renderEmpty(true);
+    console.warn('Смысловой поиск недоступен, используется текстовый', error);
+    try {
+      const fallback = await api('rpc/search_knowledge', {
+        method: 'POST', body: JSON.stringify({ query_text: question, match_count: 5 })
+      });
+      lastSearchMode = 'text';
+      renderAnswer(fallback);
+    } catch (fallbackError) {
+      console.error(fallbackError);
+      renderEmpty(true);
+    }
   } finally {
     submitButton.disabled = false;
     submitButton.firstElementChild.textContent = 'Разобраться';
