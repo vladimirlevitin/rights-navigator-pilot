@@ -63,107 +63,10 @@ function chooseExampleVariant(scenario) {
   return variants[index];
 }
 
-const COMMON_REGISTERED = {
-  key: 'registered',
-  text: 'Вы уже зарегистрировались в Службе занятости?',
-  options: [
-    { label: 'Да', value: 'yes', note: 'Дата первой регистрации сохранена.' },
-    { label: 'Нет', value: 'no', note: 'Зарегистрируйтесь как можно скорее: дата влияет на период права.' },
-    { label: 'Не уверен(а)', value: 'unknown', note: 'Проверьте наличие подтверждения регистрации или первой явки.' }
-  ]
-};
 
-const FLOWS = {
-  'voluntary-resignation': [
-    { key: 'reason', text: 'Что стало главной причиной увольнения?', options: [
-      { label: 'Ухудшили условия', value: 'conditions', note: 'Это может быть уважительной причиной, если ухудшение существенное и подтверждено.' },
-      { label: 'Состояние здоровья', value: 'health', note: 'Медицинская причина может быть уважительной при наличии документов.' },
-      { label: 'Личное решение', value: 'personal', note: 'Без признанной уважительной причины обычно действует ожидание 90 дней.' },
-      { label: 'Другая причина', value: 'other', note: 'Причину нужно сопоставить с официальным перечнем и подтвердить.' }
-    ]},
-    { key: 'proof', text: 'Есть документы, подтверждающие эту причину?', options: [
-      { label: 'Да', value: 'yes', note: 'Приложите их к заявлению вместе с кратким объяснением.' },
-      { label: 'Нет', value: 'no', note: 'Без подтверждений добиться отмены 90-дневного ожидания будет сложнее.' },
-      { label: 'Частично', value: 'partial', note: 'Соберите недостающие письма, справки или переписку.' }
-    ]}, COMMON_REGISTERED
-  ],
-  'unpaid-leave': [
-    { key: 'initiator', text: 'Кто инициировал неоплачиваемый отпуск?', options: [
-      { label: 'Работодатель', value: 'employer', note: 'Право возможно, если ХАЛАТ длится не менее 30 дней и выполнены остальные условия.' },
-      { label: 'Я сам(а)', value: 'self', note: 'При добровольном ХАЛАТе пособие обычно не положено.' },
-      { label: 'Неясно', value: 'unknown', note: 'Нужно получить письменное подтверждение работодателя.' }
-    ]},
-    { key: 'duration', text: 'Какова заявленная продолжительность ХАЛАТа?', options: [
-      { label: '30 дней или больше', value: '30plus', note: 'Минимальное условие продолжительности выполнено.' },
-      { label: 'Меньше 30 дней', value: 'under30', note: 'Для ХАЛАТа от работодателя минимальный срок обычно не выполнен.' },
-      { label: 'Пока неизвестно', value: 'unknown', note: 'Попросите работодателя указать даты письменно.' }
-    ]}, COMMON_REGISTERED
-  ],
-  'eligibility-basics': [
-    { key: 'work', text: 'В каком статусе вы работали?', options: [
-      { label: 'Наёмный работник', value: 'employee', note: 'Этот вид работы входит в обычную проверку права на авталу.' },
-      { label: 'Только ацмаи', value: 'self', note: 'Ацмаи обычно не застрахован на случай безработицы.' },
-      { label: 'И так, и так', value: 'both', note: 'Нужно отдельно проверить месяцы именно наёмной работы.' }
-    ]},
-    { key: 'months', text: 'Есть 12 месяцев наёмной работы из последних 18?', options: [
-      { label: 'Да', value: 'yes', note: 'Базовое условие страхового периода, вероятно, выполнено.' },
-      { label: 'Нет', value: 'no', note: 'Обычного страхового периода может не хватить.' },
-      { label: 'Надо посчитать', value: 'unknown', note: 'Соберите тлуши и список месяцев работы.' }
-    ]}, COMMON_REGISTERED
-  ],
-  'fired-contract-end': [
-    { key: 'ending', text: 'Как закончилась работа?', options: [
-      { label: 'Меня уволили', value: 'fired', note: 'Ожидание 90 дней, установленное для добровольного увольнения, обычно не применяется.' },
-      { label: 'Закончился договор', value: 'contract', note: 'Окончание срочного договора рассматривается отдельно от добровольного увольнения.' },
-      { label: 'Подписал(а) соглашение', value: 'agreement', note: 'Важно, как причина сформулирована в документах работодателя.' }
-    ]},
-    { key: 'months', text: 'Есть 12 месяцев работы из последних 18?', options: [
-      { label: 'Да', value: 'yes', note: 'Страховой период, вероятно, выполнен.' },
-      { label: 'Нет', value: 'no', note: 'Страхового периода может не хватить.' },
-      { label: 'Не знаю', value: 'unknown', note: 'Понадобится список месяцев работы и тлуши.' }
-    ]}, COMMON_REGISTERED
-  ],
-  'qualifying-period': [
-    { key: 'months', text: 'Сколько месяцев наёмной работы было в последних 18 месяцах?', options: [
-      { label: '12 или больше', value: 'yes', note: 'Общее условие страхового периода, вероятно, выполнено.' },
-      { label: 'Меньше 12', value: 'no', note: 'Проверьте, могут ли специальные периоды дополнить расчёт.' },
-      { label: 'Не могу посчитать', value: 'unknown', note: 'Составьте помесячный список по тлушам.' }
-    ]}, COMMON_REGISTERED
-  ],
-  'self-employed': [
-    { key: 'work', text: 'Кроме работы как ацмаи, была работа по найму?', options: [
-      { label: 'Да', value: 'both', note: 'Право нужно проверять по периодам наёмной работы.' },
-      { label: 'Нет', value: 'self', note: 'Обычное пособие по безработице ацмаи, как правило, не положено.' },
-      { label: 'Была давно', value: 'old', note: 'Важно, попадает ли она в 18 месяцев до регистрации.' }
-    ]}, COMMON_REGISTERED
-  ],
-  'missed-appointment': [
-    { key: 'event', text: 'Что именно произошло?', options: [
-      { label: 'Пропущена явка', value: 'missed', note: 'Можно потерять выплату за период между явками.' },
-      { label: 'Отказ от работы', value: 'refusal', note: 'Возможны 90 дней без выплаты и уменьшение права на 30 дней.' },
-      { label: 'Ошибка в системе', value: 'error', note: 'Сохраните подтверждения явки и запросите исправление записи.' }
-    ]},
-    { key: 'proof', text: 'Есть подтверждение уважительной причины или явки?', options: [
-      { label: 'Да', value: 'yes', note: 'Приложите его при обращении или обжаловании.' },
-      { label: 'Нет', value: 'no', note: 'Запросите у Службы занятости запись о событии.' },
-      { label: 'Собираю', value: 'partial', note: 'Не откладывайте обращение до истечения возможного срока.' }
-    ]}
-  ],
-  'travel-abroad': [
-    { key: 'travel', text: 'На каком этапе поездка?', options: [
-      { label: 'Только планирую', value: 'planning', note: 'Сверьте поездку с датами обязательных явок.' },
-      { label: 'Уже за границей', value: 'abroad', note: 'Дни пребывания за границей обычно не оплачиваются.' },
-      { label: 'Уже вернулся(ась)', value: 'returned', note: 'Возобновите явки и проверьте оставшиеся дни права.' }
-    ]}
-  ],
-  'age-retirement': [
-    { key: 'age', text: 'Ваш возраст сейчас?', options: [
-      { label: 'Меньше 67', value: 'under67', note: 'Возрастное условие может быть выполнено; проверяются и остальные условия.' },
-      { label: 'Уже исполнилось 67', value: '67plus', note: 'Стандартная автала рассчитана на период до достижения 67 лет.' },
-      { label: '67 скоро', value: 'near67', note: 'Нужны точные даты рождения и прекращения работы.' }
-    ]}
-  ]
-};
+let originalQuestion = '';
+let dialogueAnswers = [];
+let debugVisible = true;
 
 const node = (tag, className, text) => {
   const element = document.createElement(tag);
@@ -173,219 +76,260 @@ const node = (tag, className, text) => {
 };
 
 async function api(path, options = {}) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const response = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
     ...options,
-    headers: {
-      apikey: SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
+    headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', ...(options.headers || {}) }
   });
-  if (!response.ok) throw new Error(`API ${response.status}`);
+  if (!response.ok) throw new Error('API ' + response.status);
   return response.json();
 }
 
-function addList(parent, items, ordered = false) {
-  const list = node(ordered ? 'ol' : 'ul');
-  items.forEach(item => list.append(node('li', '', item)));
-  parent.append(list);
+function ensureClientId() {
+  let id = sessionStorage.getItem('navigator_session_id');
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem('navigator_session_id', id);
+  }
+  return id;
 }
 
-function renderEmpty(isError = false) {
+function dateRu(value) {
+  if (!value) return 'дата не указана';
+  return new Date(value).toLocaleDateString('ru-RU');
+}
+
+function percent(value) {
+  return Math.max(0, Math.min(100, Math.round((Number(value) || 0) * 100)));
+}
+
+function addCitations(parent, slugs, sourceMap) {
+  if (!slugs?.length) return;
+  const citations = node('span', 'inline-citations');
+  slugs.forEach(slug => {
+    const source = sourceMap.get(slug);
+    if (!source) return;
+    const link = node('a', '', source.title);
+    link.href = source.source_url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.title = source.source_title;
+    citations.append(link);
+  });
+  parent.append(citations);
+}
+
+function renderLoading() {
   result.replaceChildren();
-  const box = node('div', 'empty');
-  box.append(node('h2', '', isError ? 'Сервис временно недоступен' : 'В пилотной базе пока нет уверенного ответа'));
-  box.append(node('p', '', isError
-    ? 'Попробуйте ещё раз немного позже. Ваш вопрос не был сохранён.'
-    : 'Сейчас прототип знает только основные ситуации по автале. Попробуйте уточнить причину прекращения работы, дату, возраст или слова «ХАЛАТ», «ацмаи», «Служба занятости».'));
+  const box = node('article', 'answer-card loading-card');
+  box.append(node('div', 'answer-label', 'Многоэтапный анализ'));
+  box.append(node('h2', '', 'Разбираю ситуацию…'));
+  const stages = node('div', 'loading-stages');
+  ['Привожу вопрос к стандартному виду', 'Ищу материалы по смыслу', 'Проверяю, хватает ли данных', 'Собираю ответ с источниками'].forEach((text, index) => {
+    const row = node('div', 'loading-stage');
+    row.append(node('span', '', String(index + 1)), node('p', '', text));
+    stages.append(row);
+  });
+  box.append(stages);
   result.append(box);
   result.hidden = false;
   result.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function renderAnswer(items) {
-  if (!items.length || items[0].score < 0.1) return renderEmpty(false);
-  const primary = items[0];
+function renderEmpty(message = 'Сейчас прототип знает только основные ситуации по автале.') {
+  result.replaceChildren();
+  const box = node('div', 'empty');
+  box.append(node('h2', '', 'В базе пока нет уверенного ответа'));
+  box.append(node('p', '', message));
+  result.append(box);
+  result.hidden = false;
+}
+
+function renderDebug(analysis) {
+  const wrapper = node('section', 'debug-wrapper');
+  const head = node('div', 'debug-head');
+  const title = node('div');
+  title.append(node('strong', '', 'Как получен ответ'), node('p', '', 'Проверяемый протокол работы алгоритма, не скрытые рассуждения модели.'));
+  const toggle = node('button', 'debug-toggle', debugVisible ? 'Скрыть' : 'Показать');
+  toggle.type = 'button';
+  head.append(title, toggle);
+  wrapper.append(head);
+
+  const body = node('div', 'debug-body');
+  body.hidden = !debugVisible;
+  toggle.addEventListener('click', () => {
+    debugVisible = !debugVisible;
+    body.hidden = !debugVisible;
+    toggle.textContent = debugVisible ? 'Скрыть' : 'Показать';
+  });
+
+  const stages = [
+    ['1', 'Принят вопрос', analysis.received_question],
+    ['2', 'Стандартная формулировка', analysis.normalized_question],
+    ['3', 'Выделены факты', analysis.known_facts?.length ? analysis.known_facts.map(x => x.label + ': ' + x.value).join(' · ') : 'Явных фактов пока мало'],
+    ['4', 'Построен смысловой вектор', analysis.vector.model + ' · ' + analysis.vector.dimensions + ' чисел'],
+  ];
+  stages.forEach(([number, label, value]) => {
+    const item = node('article', 'debug-stage');
+    item.append(node('span', 'debug-number', number));
+    const copy = node('div');
+    copy.append(node('strong', '', label), node('p', '', value));
+    item.append(copy);
+    body.append(item);
+  });
+
+  const retrieval = node('article', 'debug-stage debug-retrieval');
+  retrieval.append(node('span', 'debug-number', '5'));
+  const found = node('div');
+  found.append(node('strong', '', 'Найдены релевантные материалы'));
+  if (!analysis.retrieval?.length) found.append(node('p', '', 'Ни одна карточка не прошла порог уверенности.'));
+  (analysis.retrieval || []).forEach(item => {
+    const row = node('div', 'score-row');
+    const copy = node('div');
+    copy.append(node('b', '', item.title), node('small', '', ' смысл ' + percent(item.semantic_score) + '% · текст ' + percent(item.lexical_score) + '%'));
+    const meter = node('i');
+    meter.style.width = percent(item.combined_score) + '%';
+    row.append(copy, meter);
+    found.append(row);
+  });
+  retrieval.append(found);
+  body.append(retrieval);
+
+  const final = node('article', 'debug-stage');
+  final.append(node('span', 'debug-number', '6'));
+  const finalCopy = node('div');
+  finalCopy.append(node('strong', '', 'Ответ собран по найденным материалам'));
+  finalCopy.append(node('p', '', analysis.synthesis.model + ' · использовано карточек: ' + analysis.synthesis.used_cards + ' · внешние знания запрещены'));
+  final.append(finalCopy);
+  body.append(final);
+
+  if (analysis.missing_facts?.length) {
+    const missing = node('div', 'debug-missing');
+    missing.append(node('strong', '', 'Каких данных не хватает'));
+    const list = node('ul');
+    analysis.missing_facts.forEach(item => list.append(node('li', '', item.label + ' — ' + item.why)));
+    missing.append(list);
+    body.append(missing);
+  }
+  wrapper.append(body);
+  return wrapper;
+}
+
+function renderPayload(payload) {
+  const answer = payload.answer;
+  if (!answer) return renderEmpty();
+  const sourceMap = new Map((payload.sources || []).map(x => [x.slug, x]));
   result.replaceChildren();
 
   const card = node('article', 'answer-card');
   const top = node('div', 'answer-top');
-  top.append(node('div', 'answer-icon', '✓'));
+  top.append(node('div', 'answer-icon', answer.status === 'out_of_scope' ? '?' : '✓'));
   const heading = node('div');
-  heading.append(node('div', 'answer-label', lastSearchMode === 'hybrid' ? 'Смысловой + текстовый поиск' : 'Наиболее подходящее правило'));
-  heading.append(node('h2', '', primary.title));
-  heading.append(node('p', 'short-answer', primary.short_answer));
+  const status = answer.status === 'needs_clarification' ? 'Предварительный ответ · нужно уточнение'
+    : answer.status === 'out_of_scope' ? 'За пределами пилотной базы' : 'Предварительный маршрут';
+  heading.append(node('div', 'answer-label', status), node('h2', '', answer.headline));
   top.append(heading);
   card.append(top);
-  card.append(node('p', 'answer-body', primary.answer));
 
-  const grid = node('div', 'answer-grid');
-  if (primary.steps?.length) {
-    const steps = node('section', 'answer-panel');
+  if (dialogueAnswers.length) {
+    const history = node('div', 'clarification-history');
+    history.append(node('strong', '', 'Уже уточнили: '));
+    history.append(document.createTextNode(dialogueAnswers.map(x => x.question + ' — ' + x.answer).join(' · ')));
+    card.append(history);
+  }
+
+  const findings = node('section', 'synthesis-section');
+  findings.append(node('h3', '', 'Что следует из имеющихся данных'));
+  if (!answer.findings?.length) findings.append(node('p', 'answer-body-v2', 'В текущей базе недостаточно материала для содержательного вывода.'));
+  (answer.findings || []).forEach(item => {
+    const paragraph = node('p', 'finding');
+    paragraph.append(document.createTextNode(item.text));
+    addCitations(paragraph, item.source_slugs, sourceMap);
+    findings.append(paragraph);
+  });
+  card.append(findings);
+
+  if (answer.next_steps?.length) {
+    const steps = node('section', 'synthesis-section steps-v2');
     steps.append(node('h3', '', 'Что можно сделать сейчас'));
-    addList(steps, primary.steps, true);
-    grid.append(steps);
-  }
-  if (primary.follow_up_questions?.length) {
-    const questions = node('section', 'answer-panel questions');
-    questions.append(node('h3', '', 'Что нужно уточнить'));
-    addList(questions, primary.follow_up_questions);
-    grid.append(questions);
-  }
-  card.append(grid);
-
-  if (primary.hebrew_terms?.length) {
-    const terms = node('div', 'terms');
-    primary.hebrew_terms.forEach(term => {
-      const item = node('span', 'term');
-      const hebrew = node('b', '', term.he);
-      hebrew.dir = 'rtl';
-      item.append(hebrew, document.createTextNode(` · ${term.ru} — ${term.meaning}`));
-      terms.append(item);
+    const list = node('ol');
+    answer.next_steps.forEach(item => {
+      const li = node('li');
+      li.append(document.createTextNode(item.text));
+      addCitations(li, item.source_slugs, sourceMap);
+      list.append(li);
     });
-    card.append(terms);
+    steps.append(list);
+    card.append(steps);
   }
 
-  const source = node('div', 'source-row');
-  const link = node('a', '', `Источник: ${primary.source_title}`);
-  link.href = primary.source_url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  source.append(link, node('span', '', `Проверено: ${new Date(primary.reviewed_on).toLocaleDateString('ru-RU')}`));
-  card.append(source);
-  result.append(card);
-
-  startDialogue(primary, card);
-
-  const relatedItems = items.slice(1).filter(item => item.score >= Math.max(.11, primary.score * .45)).slice(0, 2);
-  if (relatedItems.length) {
-    const related = node('div', 'related');
-    related.append(node('strong', '', 'Возможно, пригодится также:'));
-    const buttons = node('div', 'related-buttons');
-    relatedItems.forEach(item => {
-      const button = node('button', '', item.title);
+  if (answer.next_question?.ask && answer.next_question.options?.length) {
+    const dialogue = node('section', 'dialogue dynamic-dialogue');
+    dialogue.append(node('div', 'route-kicker', 'Уточнение, которое меняет вывод'));
+    dialogue.append(node('h3', '', answer.next_question.text));
+    dialogue.append(node('p', 'question-why', answer.next_question.why));
+    const options = node('div', 'dialogue-options');
+    answer.next_question.options.forEach(option => {
+      const button = node('button', '', option.label);
       button.type = 'button';
-      button.addEventListener('click', () => renderAnswer([item]));
-      buttons.append(button);
+      button.addEventListener('click', () => {
+        dialogueAnswers.push({ key: answer.next_question.key, question: answer.next_question.text, answer: option.label });
+        search(originalQuestion, dialogueAnswers);
+      });
+      options.append(button);
     });
-    related.append(buttons);
-    result.append(related);
+    dialogue.append(options);
+    card.append(dialogue);
   }
 
+  if (payload.sources?.length) {
+    const sources = node('section', 'sources-v2');
+    sources.append(node('h3', '', 'Использованные источники'));
+    payload.sources.forEach((source, index) => {
+      const row = node('div', 'source-v2');
+      const link = node('a', '', (index + 1) + '. ' + source.source_title);
+      link.href = source.source_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      row.append(link, node('span', '', source.title + ' · проверено ' + dateRu(source.reviewed_on)));
+      sources.append(row);
+    });
+    card.append(sources);
+  }
+
+  if (answer.limitations?.length) {
+    const limits = node('div', 'limitations');
+    limits.append(node('strong', '', 'Ограничения: '), document.createTextNode(answer.limitations.join(' ')));
+    card.append(limits);
+  }
+  result.append(card, renderDebug(payload.analysis));
+
+  if (dialogueAnswers.length) {
+    const restart = node('button', 'restart-analysis', 'Начать разбор заново');
+    restart.type = 'button';
+    restart.addEventListener('click', () => { dialogueAnswers = []; search(originalQuestion, []); });
+    result.append(restart);
+  }
   result.hidden = false;
   result.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function startDialogue(card, answerCard) {
-  activeCard = card;
-  dialogueAnswers = [];
-  const flow = FLOWS[card.slug] || [COMMON_REGISTERED];
-  const dialogue = node('section', 'dialogue');
-  answerCard.append(dialogue);
-  renderDialogueStep(dialogue, flow, 0);
-}
-
-function renderDialogueStep(container, flow, index) {
-  container.replaceChildren();
-  const progress = node('div', 'dialogue-progress');
-  progress.append(node('span', '', `Уточнение ${Math.min(index + 1, flow.length)} из ${flow.length}`));
-  const track = node('i');
-  track.style.width = `${Math.min((index / flow.length) * 100, 100)}%`;
-  progress.append(track);
-  container.append(progress);
-
-  if (index >= flow.length) return renderRoute(container);
-
-  const step = flow[index];
-  container.append(node('h3', '', step.text));
-  const options = node('div', 'dialogue-options');
-  step.options.forEach(option => {
-    const button = node('button', '', option.label);
-    button.type = 'button';
-    button.addEventListener('click', () => {
-      dialogueAnswers.push({ key: step.key, label: option.label, value: option.value, note: option.note });
-      renderDialogueStep(container, flow, index + 1);
-    });
-    options.append(button);
-  });
-  container.append(options);
-  if (index > 0) {
-    const back = node('button', 'dialogue-back', '← Вернуться к предыдущему вопросу');
-    back.type = 'button';
-    back.addEventListener('click', () => {
-      dialogueAnswers.pop();
-      renderDialogueStep(container, flow, index - 1);
-    });
-    container.append(back);
-  }
-}
-
-function renderRoute(container) {
-  container.classList.add('complete');
-  container.replaceChildren();
-  container.append(node('div', 'route-kicker', 'Ваш предварительный маршрут'));
-  container.append(node('h3', '', 'Что следует из ваших ответов'));
-
-  const summary = node('div', 'route-summary');
-  dialogueAnswers.forEach(item => {
-    const row = node('div', 'route-row');
-    row.append(node('span', '', '✓'), node('p', '', item.note));
-    summary.append(row);
-  });
-  container.append(summary);
-
-  if (activeCard.steps?.length) {
-    container.append(node('h3', '', 'Что делать дальше'));
-    addList(container, activeCard.steps, true);
-  }
-
-  if (activeCard.documents?.length) {
-    const docs = node('div', 'route-docs');
-    docs.append(node('strong', '', 'Что приготовить: '));
-    docs.append(document.createTextNode(activeCard.documents.join(' · ')));
-    container.append(docs);
-  }
-
-  const restart = node('button', 'dialogue-restart', 'Изменить ответы');
-  restart.type = 'button';
-  restart.addEventListener('click', () => {
-    dialogueAnswers = [];
-    container.classList.remove('complete');
-    renderDialogueStep(container, FLOWS[activeCard.slug] || [COMMON_REGISTERED], 0);
-  });
-  container.append(restart);
-}
-
-async function search(question) {
+async function search(question, answers = []) {
+  originalQuestion = question;
   submitButton.disabled = true;
-  submitButton.firstElementChild.textContent = 'Ищу…';
+  submitButton.firstElementChild.textContent = answers.length ? 'Уточняю…' : 'Разбираю…';
+  renderLoading();
   try {
-    let clientId = sessionStorage.getItem('navigator_session_id');
-    if (!clientId) {
-      clientId = crypto.randomUUID();
-      sessionStorage.setItem('navigator_session_id', clientId);
-    }
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/semantic-search`, {
+    const response = await fetch(SUPABASE_URL + '/functions/v1/semantic-search', {
       method: 'POST',
       headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, client_id: clientId })
+      body: JSON.stringify({ question, answers, client_id: ensureClientId() })
     });
-    if (!response.ok) throw new Error(`semantic API ${response.status}`);
     const payload = await response.json();
-    lastSearchMode = payload.search_mode || 'hybrid';
-    renderAnswer(payload.results || []);
+    if (!response.ok) throw new Error(payload.message || 'semantic API ' + response.status);
+    renderPayload(payload);
   } catch (error) {
-    console.warn('Смысловой поиск недоступен, используется текстовый', error);
-    try {
-      const fallback = await api('rpc/search_knowledge', {
-        method: 'POST', body: JSON.stringify({ query_text: question, match_count: 5 })
-      });
-      lastSearchMode = 'text';
-      renderAnswer(fallback);
-    } catch (fallbackError) {
-      console.error(fallbackError);
-      renderEmpty(true);
-    }
+    console.error(error);
+    renderEmpty('Не удалось завершить интеллектуальный анализ. Попробуйте ещё раз немного позже. Вопрос не был сохранён.');
   } finally {
     submitButton.disabled = false;
     submitButton.firstElementChild.textContent = 'Разобраться';
@@ -393,15 +337,19 @@ async function search(question) {
 }
 
 function useExample(question) {
+  dialogueAnswers = [];
   questionInput.value = question;
   questionInput.focus();
-  search(question);
+  search(question, []);
 }
 
 form.addEventListener('submit', event => {
   event.preventDefault();
   const question = questionInput.value.trim();
-  if (question.length >= 2) search(question);
+  if (question.length >= 2) {
+    dialogueAnswers = [];
+    search(question, []);
+  }
 });
 
 exampleList.addEventListener('click', event => {
