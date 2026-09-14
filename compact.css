@@ -1,0 +1,93 @@
+/* Compact density layer: keeps typography readable while reducing vertical sprawl. */
+.hero { padding: 58px 0 48px; }
+.search-box { margin-top: 28px; padding: 18px; }
+textarea { min-height: 82px; font-size: 18px; line-height: 1.45; }
+.examples { margin-top: 18px; }
+.result { margin: -8px auto 56px; }
+.answer-card { padding: clamp(20px, 3vw, 30px); border-radius: 18px; }
+.answer-top { gap: 13px; }
+.answer-icon { width: 38px; height: 38px; border-radius: 11px; }
+.answer-card h2 { margin: 3px 0 8px; font-size: clamp(23px, 3vw, 31px); line-height: 1.08; }
+.short-answer { font-size: 16px; line-height: 1.45; }
+.answer-body { margin-top: 18px; margin-left: 51px; line-height: 1.55; }
+.answer-grid { margin-top: 20px; margin-left: 51px; gap: 12px; }
+.answer-panel { padding: 16px; border-radius: 13px; }
+.answer-panel h3 { margin-bottom: 9px; }
+.answer-panel li { margin: 5px 0; line-height: 1.4; }
+.terms { margin-top: 16px; margin-left: 51px; gap: 7px; }
+.term { padding: 6px 9px; }
+.source-row { margin-top: 18px; margin-left: 51px; padding-top: 12px; }
+.dialogue { margin-top: 18px; margin-left: 51px; padding: 18px; border-radius: 14px; }
+.dialogue h3 { margin-bottom: 12px; font-size: 18px; }
+.dialogue-progress { margin-bottom: 15px; }
+.dialogue-options button { padding: 9px 12px; }
+.clarification-history { margin-top: 16px; margin-left: 51px; }
+.synthesis-section { margin-top: 19px; margin-left: 51px; }
+.synthesis-section h3, .sources-v2 h3 { margin-bottom: 9px; }
+.finding { margin-bottom: 8px; font-size: 15px; line-height: 1.52; }
+.steps-v2 { padding: 15px; border-radius: 13px; }
+.steps-v2 li { margin: 6px 0; line-height: 1.45; }
+.dynamic-dialogue { margin-top: 18px; }
+.question-why { margin: -4px 0 12px; line-height: 1.4; }
+.sources-v2 { margin-top: 19px; margin-left: 51px; padding-top: 13px; }
+.source-v2 { padding: 6px 0; line-height: 1.4; }
+.limitations { margin-top: 15px; margin-left: 51px; padding: 11px 13px; }
+.route-decision { margin-top: 18px; margin-left: 51px; padding: 17px; border-radius: 14px; }
+.route-decision h3 { font-size: 18px; }
+.route-explanation { line-height: 1.5; }
+.prepared-question { margin-top: 12px; padding: 12px; }
+.related { padding: 13px 16px; }
+.debug-head { padding: 13px 16px; }
+.debug-body { padding: 0 16px 16px; }
+.debug-stage { padding: 10px 0; }
+.how-it-works { padding: 54px 0; }
+.notice { margin-bottom: 44px; }
+
+@media (max-width: 800px) {
+  .hero { padding: 40px 0 34px; }
+  .answer-body, .answer-grid, .terms, .source-row, .dialogue,
+  .clarification-history, .synthesis-section, .sources-v2, .limitations,
+  .route-decision { margin-left: 0; }
+  .answer-grid { grid-template-columns: 1fr; }
+  .how-it-works { padding: 42px 0; }
+}
+
+@media (max-width: 520px) {
+  .topbar { min-height: 58px; }
+  .brand { gap: 8px; font-size: 14px; }
+  .brand-mark { width: 30px; height: 30px; font-size: 18px; }
+  .hero { padding: 28px 0 26px; }
+  h1 { margin: 14px 0 12px; font-size: 36px; line-height: 1.02; }
+  .lead { font-size: 14px; line-height: 1.5; }
+  .search-box { margin-top: 20px; padding: 14px; border-radius: 15px; }
+  textarea { min-height: 68px; font-size: 16px; }
+  .search-footer { padding-top: 11px; gap: 10px; }
+  .privacy { font-size: 11px; }
+  #submit-button { padding: 11px 14px; }
+  .examples { margin-top: 14px; }
+  .examples-title { margin-bottom: 8px; font-size: 10px; }
+  .chips { gap: 6px; }
+  .chips button { padding: 7px 10px; font-size: 11px; }
+  .result { width: calc(100% - 18px); margin-bottom: 34px; }
+  .answer-card { padding: 16px; border-radius: 15px; }
+  .answer-top { gap: 10px; }
+  .answer-icon { width: 32px; height: 32px; border-radius: 9px; }
+  .answer-label { font-size: 10px; }
+  .answer-card h2 { font-size: 22px; }
+  .short-answer { font-size: 15px; }
+  .synthesis-section, .sources-v2, .dialogue, .route-decision { margin-top: 15px; }
+  .finding { font-size: 14px; }
+  .steps-v2 { padding: 12px; }
+  .dialogue { padding: 14px; }
+  .dialogue h3 { font-size: 16px; }
+  .dialogue-options { display: grid; gap: 7px; }
+  .dialogue-options button { width: 100%; text-align: left; padding: 10px 11px; }
+  .source-v2 { font-size: 11px; }
+  .route-decision { padding: 14px; }
+  .debug-wrapper { border-radius: 13px; }
+  .debug-head { padding: 11px 13px; }
+  .how-it-works { padding: 32px 0; }
+  .how-it-works h2 { font-size: 30px; }
+  .feature-grid article { padding: 17px 15px; }
+  .notice { margin-bottom: 28px; padding: 16px; }
+}
