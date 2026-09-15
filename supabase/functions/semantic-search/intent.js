@@ -1,3 +1,5 @@
+import { expandRightsTerms } from './synonyms.js'
+
 const RULES = [
   {
     key: 'severance',
@@ -26,7 +28,7 @@ const RULES = [
 ]
 
 export function detectIntent(text) {
-  const query = String(text || '').toLowerCase()
+  const query = expandRightsTerms(text).toLowerCase()
 
   const disabilityOrHealth = /инвалид|нехут|נכות|нетрудоспособ|здоров|болезн|медицин/i.test(query)
   const employerTermination = /(?:меня\s+)?(?:увольняют|увольняет|уволили|уволил)|работодатель.{0,35}(?:увольняет|уволил|сократил|прекращает|прекратил)/i.test(query)
