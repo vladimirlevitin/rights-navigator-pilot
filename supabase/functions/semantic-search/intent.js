@@ -36,15 +36,12 @@ export function detectIntent(text) {
       label: 'увольнение при инвалидности — нужно проверить несколько прав',
       topics: ['severance', 'unemployment', 'disability'],
       focus: 'termination_with_disability',
-      preferred_slugs: [],
+      preferred_slugs: ['severance-basic-right', 'eligibility-basics', 'register-employment-service', 'disability-stop-work', 'disability-income-change'],
       confidence: 'explicit',
       matched_term: 'увольнение работодателем + инвалидность'
     }
   }
 
-  // A planned job exit mentioned together with disability/health must not be
-  // swallowed by the generic "disability + work" rule. The actionable event
-  // is termination of employment, so first check the severance route.
   const plannedExit = /(?:хочу|планирую|собираюсь).{0,35}(?:уйти|увол)|(?:уйти|уход).{0,25}(?:с|из)\s+работ/i.test(query)
   if (disabilityOrHealth && plannedExit) {
     return {
