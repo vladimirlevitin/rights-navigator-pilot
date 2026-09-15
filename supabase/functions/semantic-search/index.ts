@@ -6,6 +6,7 @@ const URL = Deno.env.get('SUPABASE_URL')!
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY')!
 const EMBED_MODEL = 'text-embedding-3-small'
 const ANSWER_MODEL = 'gpt-5-mini'
+const FUNCTION_VERSION = '18-log-runs'
 const ORIGINS = new Set(['https://vladimirlevitin.github.io','http://localhost:8000','http://127.0.0.1:8000'])
 
 function named(name:string):Record<string,string>{try{return JSON.parse(Deno.env.get(name)||'{}')}catch{return {}}}
@@ -15,6 +16,7 @@ function cors(origin:string|null){return {'Access-Control-Allow-Origin':origin&&
 function json(body:unknown,status=200,origin:string|null=null){return new Response(JSON.stringify(body),{status,headers:{...cors(origin),'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}})}
 function headers(){const h:Record<string,string>={apikey:SERVICE_KEY!,'Content-Type':'application/json'};if(SERVICE_KEY?.startsWith('eyJ'))h.Authorization='Bearer '+SERVICE_KEY;return h}
 async function db(path:string,options:RequestInit={}){const r=await fetch(URL+'/rest/v1/'+path,{...options,headers:{...headers(),...(options.headers||{})}});if(!r.ok)throw new Error('database '+r.status);const t=await r.text();return t?JSON.parse(t):null}
+async function logRun(row:any){try{await db('navigator_runs',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(row)})}catch(e){console.error('log failed',e instanceof Error?e.message:e)}}
 async function embed(input:string[]){const r=await fetch('https://api.openai.com/v1/embeddings',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:EMBED_MODEL,input,encoding_format:'float'})});if(!r.ok)throw new Error('embedding '+r.status);const p=await r.json();return p.data.sort((a:any,b:any)=>a.index-b.index).map((x:any)=>x.embedding)}
 function merge(semantic:any[],lexical:any[]){const m=new Map<string,any>();const lm=Math.max(...lexical.map(x=>Number(x.score)||0),.001);semantic.forEach(x=>m.set(x.slug,{...x,semantic_score:Number(x.score)||0,lexical_score:0,lexical_raw:0}));lexical.forEach(x=>{const raw=Number(x.score)||0,y=m.get(x.slug)||{...x,semantic_score:0};y.lexical_raw=raw;y.lexical_score=raw/lm;m.set(x.slug,y)});return [...m.values()].map(x=>({...x,score:x.semantic_score*.76+x.lexical_score*.24})).sort((a,b)=>b.score-a.score).slice(0,8)}
 function outputText(p:any){if(typeof p.output_text==='string')return p.output_text;for(const i of p.output||[])for(const c of i.content||[])if(c.type==='output_text')return c.text;throw new Error('no output')}
@@ -75,8 +77,9 @@ Deno.serve(async(req:Request)=>{
  if(origin&&!ORIGINS.has(origin))return json({error:'origin_not_allowed'},403,origin)
  if(!PUBLIC_KEYS.includes(req.headers.get('apikey')||''))return json({error:'unauthorized'},401,origin)
  if(!OPENAI_KEY||!SERVICE_KEY)return json({error:'service_not_configured'},503,origin)
+ let question='',clarifications:any[]=[]
  try{
-  const body=await req.json(),question=String(body.question||'').trim(),client=String(body.client_id||''),clarifications=answers(body.answers)
+  const body=await req.json();question=String(body.question||'').trim();const client=String(body.client_id||'');clarifications=answers(body.answers)
   if(question.length<2||question.length>800)return json({error:'invalid_question'},400,origin)
   if(!/^[a-zA-Z0-9-]{16,100}$/.test(client))return json({error:'invalid_client'},400,origin)
   if(await db('rpc/consume_navigator_quota',{method:'POST',body:JSON.stringify({p_client_key:client,p_limit:30})})!==true)return json({error:'rate_limit',message:'Лимит: 30 обращений в час.'},429,origin)
@@ -89,6 +92,9 @@ Deno.serve(async(req:Request)=>{
   const [semantic,lexical]=await Promise.all([db('rpc/match_knowledge_semantic',{method:'POST',body:JSON.stringify({query_embedding:queryVector,match_count:8})}),db('rpc/search_knowledge',{method:'POST',body:JSON.stringify({query_text:query,match_count:8})})])
   const preferred=new Set(intent.preferred_slugs||[]),ranked=merge(semantic,lexical).filter(x=>allowed.has(x.slug)&&intentTopics.has(slugTopic.get(x.slug))&&(!preferred.size||preferred.has(x.slug))),relevant=intent.key!=='out_of_scope'?ranked.filter(x=>(Number(x.semantic_score)||0)>=.46||(Number(x.lexical_raw)||0)>=.025).slice(0,intent.key==='multi_rights'?8:5):[]
   const answer=sanitize(await synthesize(question,clarifications,relevant,intent,explicitFacts),relevant,clarifications,intent,explicitFacts,question),map=new Map(relevant.map(x=>[x.slug,x])),usedSlugs=[...new Set([...answer.applied_slugs,...answer.findings.flatMap((x:any)=>x.source_slugs),...answer.next_steps.flatMap((x:any)=>x.source_slugs)])],used=usedSlugs.map((x:string)=>map.get(x)).filter(Boolean)
-  return json({search_mode:'topic-gated-hybrid-rag',answer,sources:used.map((x:any)=>({slug:x.slug,title:x.title,source_title:x.source_title,source_url:x.source_url,reviewed_on:x.reviewed_on})),analysis:{received_question:question,expanded_query:query,clarifications,intent,explicit_facts:explicitFacts,normalized_question:answer.normalized_question,known_facts:answer.known_facts,missing_facts:answer.missing_facts,vector:{model:EMBED_MODEL,dimensions:queryVector.length},retrieval:relevant.map(x=>({slug:x.slug,topic:slugTopic.get(x.slug),title:x.title,semantic_score:x.semantic_score,lexical_score:x.lexical_score,combined_score:x.score,source_title:x.source_title,reviewed_on:x.reviewed_on})),synthesis:{model:ANSWER_MODEL,grounded_only:true,used_cards:used.length}},results:relevant},200,origin)
- }catch(e){console.error(e instanceof Error?e.message:'search failed');return json({error:'search_failed'},500,origin)}
+  const sources=used.map((x:any)=>({slug:x.slug,title:x.title,source_title:x.source_title,source_url:x.source_url,reviewed_on:x.reviewed_on}))
+  const retrieval=relevant.map(x=>({slug:x.slug,topic:slugTopic.get(x.slug),title:x.title,semantic_score:x.semantic_score,lexical_score:x.lexical_score,combined_score:x.score,source_title:x.source_title,reviewed_on:x.reviewed_on}))
+  await logRun({question,clarifications,expanded_query:query,intent,explicit_facts:explicitFacts,answer,sources,retrieval,search_mode:'topic-gated-hybrid-rag',function_version:FUNCTION_VERSION})
+  return json({search_mode:'topic-gated-hybrid-rag',answer,sources,analysis:{received_question:question,expanded_query:query,clarifications,intent,explicit_facts:explicitFacts,normalized_question:answer.normalized_question,known_facts:answer.known_facts,missing_facts:answer.missing_facts,vector:{model:EMBED_MODEL,dimensions:queryVector.length},retrieval,synthesis:{model:ANSWER_MODEL,grounded_only:true,used_cards:used.length}},results:relevant},200,origin)
+ }catch(e){const message=e instanceof Error?e.message:'search failed';console.error(message);if(question)await logRun({question,clarifications,search_mode:'topic-gated-hybrid-rag',function_version:FUNCTION_VERSION,error:message});return json({error:'search_failed'},500,origin)}
 })
