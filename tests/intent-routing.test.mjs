@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict'
 import { detectIntent, extractExplicitFacts } from '../supabase/functions/semantic-search/intent.js'
+import { expandRightsTerms } from '../supabase/functions/semantic-search/synonyms.js'
 
 const cases = [
   ['дали инвалидность. могу просить пицуим на работе?', 'severance'],
+  ['Что такое питцуим?', 'severance'],
+  ['Как получить пицуй после увольнения?', 'severance'],
   ['Я инвалид и продолжаю работать. Сохранится ли пособие?', 'disability'],
   ['какая разница между медицинской и рабочей инвалидностью?', 'disability'],
   ['У меня инвалидность, и я хочу уйти с работы. Что мне положено?', 'severance'],
   ['Меня увольняют, у меня инвалидность. Что мне положено?', 'multi_rights'],
   ['Работодатель отправил меня в ХАЛАТ на 45 дней', 'unpaid_leave'],
   ['Мне 46 лет. Сколько дней будут платить авталу?', 'unemployment'],
+  ['Когда дадут автолу?', 'unemployment'],
+  ['Как оформить аватлу?', 'unemployment'],
   ['Меня уволили, что мне положено?', 'employment_ambiguous'],
   ['Как продлить загранпаспорт?', 'out_of_scope']
 ]
@@ -16,6 +21,14 @@ const cases = [
 for (const [question, expected] of cases) {
   assert.equal(detectIntent(question).key, expected, question)
 }
+
+const expandedAutola = expandRightsTerms('Когда дадут автолу?')
+assert.match(expandedAutola, /пособие по безработице/i)
+assert.match(expandedAutola, /דמי אבטלה/)
+
+const expandedPitsuim = expandRightsTerms('Что такое пицуим?')
+assert.match(expandedPitsuim, /выходное пособие/i)
+assert.match(expandedPitsuim, /פיצויי פיטורים/)
 
 const disabilityTerminology = detectIntent('какая разница между медицинской и рабочей инвалидностью?')
 assert.equal(disabilityTerminology.key, 'disability')
@@ -31,6 +44,7 @@ const disabilityFiring = detectIntent('Меня увольняют, у меня 
 assert.equal(disabilityFiring.key, 'multi_rights')
 assert.deepEqual(disabilityFiring.topics, ['severance', 'unemployment', 'disability'])
 assert.equal(disabilityFiring.focus, 'termination_with_disability')
+assert.deepEqual(disabilityFiring.preferred_slugs, ['severance-basic-right', 'eligibility-basics', 'register-employment-service', 'disability-stop-work', 'disability-income-change'])
 
 assert.deepEqual(detectIntent('Мне 46 лет. Сколько дней дадут авталу?').preferred_slugs, ['entitlement-days'])
 assert.deepEqual(detectIntent('Когда после увольнения зарегистрироваться для авталы?').preferred_slugs, ['register-employment-service', 'missed-appointment'])
@@ -38,6 +52,7 @@ assert.deepEqual(detectIntent('Хочу уволиться по собствен
 assert.deepEqual(detectIntent('Дали инвалидность. Могу просить пицуим?').preferred_slugs, ['severance-health-resignation', 'severance-medical-proof'])
 
 console.log(`intent routing: ${cases.length} checks passed`)
+console.log('synonym expansion: 2 checks passed')
 
 assert.deepEqual(extractExplicitFacts('Работодатель отправил меня в ХАЛАТ на 45 дней'), [
   { key: 'halat_initiator', label: 'Инициатор ХАЛАТа', value: 'работодатель' },
