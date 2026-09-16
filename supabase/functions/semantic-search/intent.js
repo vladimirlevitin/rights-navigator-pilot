@@ -48,7 +48,7 @@ export function detectIntent(text) {
     return intent('insurance_contributions', 'страховые взносы Битуах Леуми', ['insurance_contributions'], 'nonwork_income', ['insurance-nonwork-income'], 'взносы/доход не от работы')
   }
 
-  if (/форм[аы]?\s*161|тофес\s*161|טופס\s*161/iu.test(query)) {
+  if (/форм(?:а|ы|у|е|ой|ою)?\s*161|тофес\s*161|טופס\s*161/iu.test(query)) {
     return intent('severance', 'выходное пособие — пицуим', ['severance'], 'form161_tax', ['severance-form-161-tax'], 'форма 161')
   }
 
