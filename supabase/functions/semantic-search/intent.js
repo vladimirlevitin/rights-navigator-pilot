@@ -41,7 +41,7 @@ export function detectIntent(text) {
   // Old-age benefit and unemployment can coexist for an eligible woman; resignation timing is separate.
   if (/(?:пособи[ея]\s+по\s+старост|кицват\s+зикн|אזרח\s+ותיק)/iu.test(q)
       && /безработ|автал|דמי\s+אבטלה/iu.test(q)) {
-    return intent('old_age_unemployment', 'пособие по старости и автала', ['unemployment'], 'old_age_concurrent', ['unemployment-old-age-concurrent-woman','voluntary-resignation','register-employment-service'], 'старость + безработица')
+    return intent('old_age_unemployment', 'пособие по старости и автала', ['unemployment'], 'old_age_concurrent', ['unemployment-old-age-concurrent-woman','unemployment-voluntary-register-immediately'], 'старость + безработица')
   }
 
   // Private/pension-fund loss-of-capacity payment intersects both disability and unemployment.
@@ -96,6 +96,10 @@ export function extractExplicitFacts(text) {
 
   const reduced = q.match(/(?:снижа[а-яё]*|сниз[а-яё]*|уменьша[а-яё]*)[^\d\n]{0,35}(\d{2,3})\s*%/iu)
   if (reduced) facts.push({ key: 'new_disability_degree', label: 'Новая степень инвалидности/нетрудоспособности', value: reduced[1] + '%' })
+
+  if (/(?:снижа[а-яё]*|сниз[а-яё]*|уменьша[а-яё]*).{0,90}(?:инвалид|степен|процент).{0,120}(?:пособи[ея]\s+прекращ|пособи[ея]\s+отмен|прекраща[а-яё]*\s+пособ)|(?:пособи[ея]\s+прекращ|пособи[ея]\s+отмен).{0,120}(?:снижа[а-яё]*|сниз[а-яё]*|уменьша[а-яё]*)/iu.test(q)) {
+    facts.push({ key: 'termination_reason', label: 'Причина прекращения пособия', value: 'в вопросе указано, что пособие прекращается из-за снижения степени инвалидности' })
+  }
 
   if (/социальн[а-яё]*\s+надбав|доплат[а-яё]*\s+до\s+прожиточ/iu.test(q) && !facts.some(x => x.key === 'old_age_topup')) {
     facts.push({ key: 'old_age_topup', label: 'Доплата к пособию по старости', value: 'социальная надбавка / доплата до прожиточного минимума указана в вопросе' })
