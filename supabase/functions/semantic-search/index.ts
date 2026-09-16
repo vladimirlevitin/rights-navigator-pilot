@@ -6,7 +6,7 @@ const URL = Deno.env.get('SUPABASE_URL')!
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY')!
 const EMBED_MODEL = 'text-embedding-3-small'
 const ANSWER_MODEL = 'gpt-5-mini'
-const FUNCTION_VERSION = '21-benchmark-retrieval'
+const FUNCTION_VERSION = '22-benchmark-expansion'
 const ORIGINS = new Set(['https://vladimirlevitin.github.io','http://localhost:8000','http://127.0.0.1:8000'])
 
 function named(name:string):Record<string,string>{try{return JSON.parse(Deno.env.get(name)||'{}')}catch{return {}}}
@@ -72,7 +72,8 @@ async function synthesize(question:string,clarifications:any[],results:any[],int
 function controlledQuestion(intent:any,clarifications:any[],explicitFacts:any[],question:string,modelQuestion:any){
   const known=new Set([...clarifications.map(x=>x.key),...explicitFacts.map(x=>x.key)])
   if(intent.key==='multi_rights'&&!known.has('tenure'))return{ask:true,key:'tenure',text:'Вы проработали у этого работодателя не менее одного года?',why:'Стаж важен для проверки права на пицуим, а остальные права можно рассматривать параллельно.',options:[{label:'Да, год или больше',value:'at_least_year'},{label:'Нет, меньше года',value:'under_year'},{label:'Были перерывы — нужно проверить',value:'unclear'}]}
-  if(intent.key==='severance'&&!['form161_tax','retirement_resignation'].includes(intent.focus)){
+  if(intent.key==='severance'&&intent.focus==='childcare_resignation'&&!known.has('tenure'))return{ask:true,key:'tenure',text:'Вы проработали у этого работодателя не менее одного года?',why:'Для пицуим при увольнении для ухода за ребёнком стаж не менее года является существенным условием.',options:[{label:'Да, год или больше',value:'at_least_year'},{label:'Нет, меньше года',value:'under_year'},{label:'Были перерывы — нужно проверить',value:'unclear'}]}
+  if(intent.key==='severance'&&!['form161_tax','retirement_resignation','childcare_resignation'].includes(intent.focus)){
     if(!known.has('termination_status'))return{ask:true,key:'termination_status',text:'Как сейчас прекращаются трудовые отношения?',why:'Пицуим проверяются по-разному при увольнении работодателем и при уходе работника.',options:[{label:'Я только планирую уйти по здоровью',value:'planned_health_resignation'},{label:'Я уже уволился(лась) сам(а)',value:'resigned'},{label:'Меня увольняет или уже уволил работодатель',value:'employer'},{label:'Я продолжаю работать',value:'still_working'}]}
     if(!known.has('tenure'))return{ask:true,key:'tenure',text:'Вы проработали у этого работодателя не менее одного года?',why:'Для рассматриваемого права продолжительность отношений с работодателем является существенным условием.',options:[{label:'Да, год или больше',value:'at_least_year'},{label:'Нет, меньше года',value:'under_year'},{label:'Были перерывы — нужно проверить',value:'unclear'}]}
   }
