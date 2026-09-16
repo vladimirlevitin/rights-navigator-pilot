@@ -34,29 +34,24 @@ function intent(key, label, topics, focus, preferred_slugs, matched_term, confid
 export function detectIntent(text) {
   const query = expandRightsTerms(text).toLowerCase()
 
-  // Pension-capital withdrawals are a separate tax/pension domain not yet covered by the verified pilot.
   if (/(?:снят|вывест|получить).{0,45}(?:пенсионн|накоплен|страхов[а-яё]*\s+компан)|(?:35\s*%|налог).{0,45}(?:пенсионн|накоплен)/iu.test(query)) {
     return intent('out_of_scope', 'снятие пенсионных накоплений — тема пока вне базы', [], 'pension_capital_withdrawal', [], 'пенсионные накопления/снятие', 'explicit')
   }
 
-  // Old-age benefit payment schedule must win over generic pension/employment wording.
   if (/(?:пособи[ея]\s+по\s+старост|кицват\s+зикн|אזרח\s+ותיק).{0,55}(?:выплат|поступ|дата|когда|числ)|(?:выплат|когда|дата).{0,55}(?:пособи[ея]\s+по\s+старост)/iu.test(query)) {
-    return intent('old_age', 'пособие по старости', ['old_age'], 'payment_timing', ['old-age-payment-date'], 'пособие по старости + дата выплаты')
+    return intent('old_age', 'пособие по старости', ['old_age'], 'payment_timing', ['old-age-payment-september-2026','old-age-payment-date'], 'пособие по старости + дата выплаты')
   }
 
-  // Contributions/deductions are their own subject even when the question mentions disability as an old-age supplement.
   if (/(?:взнос|страхов[а-яё]*\s+взнос|медицинск[а-яё]*\s+страхован|не\s+удержива[а-яё]*|удержива[а-яё]*).{0,55}(?:битуах|зарплат|доход)|(?:битуах|зарплат|доход).{0,55}(?:взнос|медицинск[а-яё]*\s+страхован|удержива[а-яё]*)/iu.test(query)) {
     const oldAgeEmployee = /пособи[ея]\s+по\s+старост|кицват\s+зикн|אזרח\s+ותיק/iu.test(query) && /работ|зарплат|наём|наем/iu.test(query)
     if (oldAgeEmployee) return intent('insurance_contributions', 'страховые взносы Битуах Леуми', ['insurance_contributions'], 'old_age_employee', ['insurance-old-age-recipient-employee'], 'пособие по старости + работа + взносы')
     return intent('insurance_contributions', 'страховые взносы Битуах Леуми', ['insurance_contributions'], 'nonwork_income', ['insurance-nonwork-income'], 'взносы/доход не от работы')
   }
 
-  // Form 161 is a severance/tax subtopic and must not fall out of scope because of Cyrillic regex limitations.
   if (/форм[аы]?\s*161|тофес\s*161|טופס\s*161/iu.test(query)) {
     return intent('severance', 'выходное пособие — пицуим', ['severance'], 'form161_tax', ['severance-form-161-tax'], 'форма 161')
   }
 
-  // Employment rights beyond unemployment/severance.
   if (/окончательн[а-яё]*\s+расч[её]т|неиспользованн[а-яё]*\s+отпуск.{0,45}(?:увол|расч[её]т)|расч[её]т.{0,45}после.{0,20}увол/iu.test(query)) {
     return intent('employment_rights', 'трудовые права и расчёты', ['employment_rights'], 'final_settlement', ['final-settlement-unused-leave', 'wage-payment-timing'], 'окончательный расчёт/неиспользованный отпуск')
   }
@@ -73,17 +68,14 @@ export function detectIntent(text) {
     return intent('employment_rights', 'трудовые права и расчёты', ['employment_rights'], 'material_change', ['employment-material-change'], 'изменение графика/условий труда')
   }
 
-  // Mobility and special-services questions are not the same as work/income disability questions.
   if (/мобил|подвижн|ниядут|ניידות|условн[а-яё]*\s+ссуд|алваа\s+омед|הלוואה\s+עומדת|особ[а-яё]*\s+услуг|שירותים\s+מיוחדים|автомобил/iu.test(query) && /инвалид|пособ|битуах|мобил|подвижн|ниядут/iu.test(query)) {
     return intent('disability', 'инвалидность — мобильность и особые услуги', ['disability'], 'mobility_special_services', ['disability-special-services-mobility', 'disability-mobility-standing-loan'], 'мобильность/особые услуги/условная ссуда')
   }
 
-  // First application must not retrieve cards about working with an already-awarded disability benefit.
   if (/(?:оформ|подат|подава|заявлен|с\s+чего\s+начать|какие\s+документ).{0,55}(?:инвалид|нехут)|(?:инвалид|нехут).{0,55}(?:оформ|подат|подава|заявлен|с\s+чего\s+начать|документ)/iu.test(query)) {
-    return intent('disability', 'общая инвалидность', ['disability'], 'initial_application', ['disability-first-application'], 'первичное оформление инвалидности')
+    return intent('disability', 'общая инвалидность', ['disability'], 'initial_application', ['disability-first-application','disability-application-process'], 'первичное оформление инвалидности')
   }
 
-  // Retirement resignation is a distinct severance route.
   if (/(?:пенсионн[а-яё]*\s+возраст|выход[а-яё]*\s+на\s+пенси|в\s+связи\s+с\s+выходом\s+на\s+пенси|мне\s+(?:6[2-9]|7\d)\s+лет).{0,80}(?:пиц|выходн[а-яё]*\s+пособ|увол)|(?:пиц|выходн[а-яё]*\s+пособ).{0,80}(?:пенсионн|пенси)/iu.test(query)) {
     return intent('severance', 'выходное пособие — пицуим', ['severance'], 'retirement_resignation', ['severance-retirement-resignation', 'severance-basic-right'], 'пенсионный возраст + увольнение/пицуим')
   }
