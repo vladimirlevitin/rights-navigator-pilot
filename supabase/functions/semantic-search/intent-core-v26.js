@@ -1,0 +1,1 @@
+export { detectIntent, extractExplicitFacts } from 'https://raw.githubusercontent.com/vladimirlevitin/rights-navigator-pilot/8a5c1be7b49baae5fbacffd4262567acaf70cc3f/supabase/functions/semantic-search/intent.js'
