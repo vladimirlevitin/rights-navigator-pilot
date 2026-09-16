@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><title>Tatiana collector</title><style>body{font:16px system-ui;margin:24px;max-width:900px}</style><h1>Сбор кейсов</h1><p id="status">Ожидаю данные от Facebook…</p><script>
-const VERSION='dom-v7';
+const VERSION='dom-v8-debug';
 const T=/Татьяна\s+Берлин|Tatiana\s+Berlin/i,n=s=>(s||'').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim(),meta=/^(Нравится|Ответить|Поделиться|Like|Reply|Share|Автор|Администратор|Комментировать как.*|Ответить как.*|Смотреть другие.*|Посмотреть .*ответ.*)$/i;
 function clean(s){return n(n(s).split('\n').map(n).filter(Boolean).filter(x=>!meta.test(x)&&!/^·$/.test(x)&&!/^\d+\s*(мин|ч|час|дн|день|дня|дней)\.?$/i.test(x)&&!/^[0-9]+$/.test(x)).join('\n'))}
 function dedupe(s){s=clean(s);let l=s.split('\n').map(n).filter(Boolean);if(l.length%2===0){const h=l.length/2,a=n(l.slice(0,h).join('\n')),b=n(l.slice(h).join('\n'));if(a===b)return a}return n(l.filter((x,i)=>i===0||x!==l[i-1]).join('\n'))}
@@ -14,7 +14,8 @@ function parse(p){const a=(p.articles||[]).map((x,i)=>({i,parent:Number.isIntege
   for(const ans of answers){let raw=ans.own||ans.text||'';let answer=stripHeader(raw,true);if(answer.length<25)continue;const key=question.slice(0,250)+'|'+answer.slice(0,250);if(seen.has(key))continue;seen.add(key);let status='ok',rs=[];if(post.more){status='incomplete';rs.push('Вопрос содержит «Ещё».')}if(ans.more){status='incomplete';rs.push('Ответ Татьяны содержит «Ещё».')}out.push({question,tatiana_answer:answer,source_url:p.url||'',status,reason:rs.join(' '),_debug:{post_index:post.i,answer_index:ans.i}})}
  }
  const tatianaTop=a.filter(x=>x.parent<0&&T.test(x.own||''));for(const x of tatianaTop)skipped.push({answer_preview:(x.own||x.text||'').slice(0,140),reason:'Это отдельный пост Татьяны, а не ответ на вопрос — пропущен.'});
- return {collector_version:VERSION,captured_at:new Date().toISOString(),page_url:p.url||'',cases:out,skipped,summary:{total:out.length,ok:out.filter(x=>x.status==='ok').length,incomplete:out.filter(x=>x.status==='incomplete').length,skipped:skipped.length}}}
+ const diagnostic=a.filter(x=>x.own||x.text).map(x=>({i:x.i,parent:x.parent,root:rootOf(x.i,a),own_preview:(x.own||'').slice(0,180),text_has_tatiana:T.test(x.text||''),own_has_tatiana:T.test(x.own||'')}));
+ return {collector_version:VERSION,captured_at:new Date().toISOString(),page_url:p.url||'',cases:out,skipped,diagnostic,summary:{articles:a.length,total:out.length,ok:out.filter(x=>x.status==='ok').length,incomplete:out.filter(x=>x.status==='incomplete').length,skipped:skipped.length}}}
 function save(o){const b=new Blob([JSON.stringify(o,null,2)],{type:'application/json;charset=utf-8'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='tatiana_cases_'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
-addEventListener('message',e=>{if(!e.data||e.data.kind!=='tatiana-snapshot')return;const o=parse(e.data);document.getElementById('status').textContent=`Версия ${VERSION}. Найдено: ${o.summary.total}, готовых: ${o.summary.ok}, неполных: ${o.summary.incomplete}, пропущено: ${o.summary.skipped}. Файл скачан.`;save(o)});
+addEventListener('message',e=>{if(!e.data||e.data.kind!=='tatiana-snapshot')return;const o=parse(e.data);document.getElementById('status').textContent=`Версия ${VERSION}. Статей: ${o.summary.articles}. Найдено: ${o.summary.total}. Файл скачан.`;save(o)});
 </script>
