@@ -11,7 +11,7 @@ const RULES = [
     key: 'unpaid_leave',
     label: 'неоплачиваемый отпуск — ХАЛАТ',
     topics: ['unpaid_leave'],
-    pattern: /халат|חל[״"']?ת|неоплачиваем[а-яё]*\s+отпуск|отпуск[а-яё]*\s+за\s+свой\s+сч[её]т/iu
+    pattern: /халат|חל[״"']?ת|неоплачиваем[а-яё]*\s+отпуск|отпуск[а-яё]*\s+за\s+свой\s+сч[её]т|(?:сидеть|сидит|оставаться|оставляет|дома).{0,40}за\s+свой\s+сч[её]т/iu
   },
   {
     key: 'disability',
@@ -51,6 +51,45 @@ export function detectIntent(text) {
     return intent('disability', 'общая инвалидность — мигрень', ['disability'], 'migraine', ['disability-migraine-criteria','disability-first-application','disability-application-process'], 'мигрень + инвалидность/поддержка')
   }
 
+  if (/(?:пособи[ея]\s+по\s+старост|пенси).{0,100}(?:надбавк[а-яё]*\s+по\s+инвалид|доплат[а-яё]*\s+по\s+инвалид)|(?:надбавк[а-яё]*\s+по\s+инвалид|доплат[а-яё]*\s+по\s+инвалид).{0,100}(?:пособи[ея]\s+по\s+старост|пенси)/iu.test(query)
+      && /льгот|электр|вод|арнон|больничн[а-яё]*\s+касс|купат/iu.test(query)) {
+    return intent('old_age', 'льготы при пособии по старости с доплатой по инвалидности', ['old_age'], 'disability_supplement_benefits', ['old-age-disability-supplement-benefits','old-age-water-benefit','old-age-electricity-account-holder','old-age-arnona-senior-2026'], 'старость + доплата по инвалидности + льготы')
+  }
+
+  if (/(?:пособи[ея]\s+по\s+старост|пенси).{0,120}(?:социальн[а-яё]*\s+надбав|доплат[а-яё]*\s+(?:до\s+)?прожиточн)|(?:социальн[а-яё]*\s+надбав|доплат[а-яё]*\s+(?:до\s+)?прожиточн).{0,120}(?:пособи[ея]\s+по\s+старост|пенси)/iu.test(query)
+      && /вод|кубометр|водн[а-яё]*\s+корпорац/iu.test(query)) {
+    return intent('old_age', 'льгота на воду при пособии по старости', ['old_age'], 'water_benefit', ['old-age-water-benefit'], 'старость + социальная надбавка + вода')
+  }
+
+  if (/(?:300\s*(?:дн|дней)|предпенсион)/iu.test(query) && /безработ|автал|דמי\s+אבטלה/iu.test(query)) {
+    const repeat = /(?:снова|повтор|нов[а-яё]*\s+прав|ещ[её]\s+год\s+работ|через.{0,25}работ|после.{0,35}300)/iu.test(query)
+    return intent('unemployment', 'пособие по безработице — специальное правило 57–67', ['unemployment'], repeat ? 'repeat_after_300' : 'women_57_67_300', repeat ? ['unemployment-women-57-67-300','unemployment-repeat-claims','qualifying-period','entitlement-days'] : ['unemployment-women-57-67-300','entitlement-days'], repeat ? '300 дней + повторная заявка' : '300 дней / предпенсионный возраст')
+  }
+
+  if (/(?:вернувш[а-яё]*\s+жител|тошав\s+хозер|репатриир.{0,60}(?:уех|вернул)|144\s*месяц|60\s*месяц|страхов[а-яё]*\s+(?:стаж|период)).{0,180}(?:пособи[ея]\s+по\s+старост|старост)|(?:пособи[ея]\s+по\s+старост|старост).{0,180}(?:вернувш[а-яё]*\s+жител|144\s*месяц|60\s*месяц|страхов[а-яё]*\s+(?:стаж|период))/iu.test(query)) {
+    return intent('old_age', 'пособие по старости — страховой период', ['old_age'], 'qualifying_period', ['old-age-qualifying-period-woman'], 'старость + страховой период/вернувшийся житель')
+  }
+
+  if (/социальн[а-яё]*\s+жиль|очеред[а-яё]*.{0,20}жиль|помощ[ьи]\s+на\s+аренд/iu.test(query)
+      && /инвалид|100\s*%|коляск|хостел/iu.test(query)) {
+    return intent('housing_support', 'социальное жильё при инвалидности', ['housing_support'], 'disabled_public_housing', ['housing-disabled-wheelchair-public-housing','housing-assistance-update-details'], 'социальное жильё + инвалидность')
+  }
+
+  if (/(?:прожиточн[а-яё]*\s+минимум|пособи[ея]\s+по\s+прожиточн|income\s+support)/iu.test(query)
+      && /(?:пенсионн[а-яё]*\s+возраст|6[3-9][,.]?\d*\s*лет|пособи[ея]\s+по\s+старост|отказ.{0,40}старост)/iu.test(query)
+      && /арнон|социальн[а-яё]*\s+жиль|аренд/iu.test(query)) {
+    return intent('senior_housing_benefits', 'льготы и жильё после пенсионного возраста при пособии по прожиточному минимуму', ['old_age','housing_support'], 'senior_income_support', ['old-age-income-support-arnona','housing-senior-income-support-options','housing-assistance-update-details'], 'прожиточный минимум + пенсионный возраст + жильё/арнона')
+  }
+
+  if (/(?:переезд|переезжа|переех).{0,120}(?:пиц|выходн[а-яё]*\s+пособ|увол)|(?:пиц|выходн[а-яё]*\s+пособ|увол).{0,120}(?:переезд|переезжа|переех)/iu.test(query)) {
+    const pensionGap = /пенсионн[а-яё]*\s+(?:отчисл|программ|фонд)|не\s+делал.{0,50}отчисл|компонент.{0,20}пиц/iu.test(query)
+    return intent('severance', 'пицуим при увольнении из-за переезда', pensionGap ? ['severance','employment_rights'] : ['severance'], 'relocation_and_pension', pensionGap ? ['severance-relocation-development-area','employment-pension-contributions-basic','severance-basic-right'] : ['severance-relocation-development-area','severance-basic-right'], 'переезд + увольнение/пицуим')
+  }
+
+  if (/(?:работодатель|начальник).{0,120}(?:сидеть|оставаться|дома).{0,50}за\s+свой\s+сч[её]т|(?:весь\s+месяц|30\s*дн).{0,80}за\s+свой\s+сч[её]т/iu.test(query)) {
+    return intent('unpaid_leave', 'неоплачиваемый отпуск — ХАЛАТ', ['unpaid_leave'], 'initiator_and_duration', ['unpaid-leave','unpaid-leave-voluntary'], 'работодатель отправляет домой за свой счёт')
+  }
+
   if (/(?:степен[ьи].{0,30}(?:нетрудоспособ|потер[а-яё]*\s+трудоспособ)|нетрудоспособност[ьи]).{0,20}65\s*%|65\s*%.{0,35}(?:нетрудоспособ|потер[а-яё]*\s+трудоспособ)/iu.test(query)
       && /зарплат|доход|зарабат|работ/iu.test(query)) {
     return intent('disability', 'пособие и работа при инвалидности', ['disability'], 'work_income_65', ['disability-income-65-2026'], '65% нетрудоспособности + заработок')
@@ -62,14 +101,14 @@ export function detectIntent(text) {
   }
 
   if (/(?:выход[а-яё]*\s+на\s+пенси|выходит?\s+на\s+пенси|пособи[ея]\s+по\s+старост|мне\s+(?:6[7-9]|7\d|8\d)\s+лет).{0,150}(?:скидк|льгот|сч[её]т|перепис)|(?:скидк|льгот|сч[её]т|перепис).{0,150}(?:пенси|пособи[ея]\s+по\s+старост|мне\s+(?:6[7-9]|7\d|8\d)\s+лет)/iu.test(query)) {
-    return intent('old_age', 'льготы в пенсионном возрасте', ['old_age'], 'benefits_and_bills', ['old-age-supplement-benefits','old-age-discount-account-holder','old-age-arnona-senior-2026','old-age-electricity-account-holder'], 'пенсионный возраст + льготы/счета')
+    return intent('old_age', 'льготы в пенсионном возрасте', ['old_age'], 'benefits_and_bills', ['old-age-supplement-benefits','old-age-discount-account-holder','old-age-arnona-senior-2026','old-age-electricity-account-holder','old-age-water-benefit','old-age-disability-supplement-benefits'], 'пенсионный возраст + льготы/счета')
   }
 
   if (/амигур|amigur|хостел|социальн[а-яё]*\s+жиль|общественн[а-яё]*\s+жиль|помощ[ьи]\s+на\s+аренд|помощ[ьи]\s+в\s+аренд|субсид[а-яё]*\s+на\s+аренд/iu.test(query)) {
     if (/(?:доход|пенси).{0,80}(?:учитыва|перерасч|оплат|квартплат)|(?:учитыва|перерасч|квартплат).{0,80}(?:доход|пенси)/iu.test(query)) {
       return intent('housing_support', 'жилищная помощь и социальное жильё', ['housing_support'], 'rent_income_recalc', ['public-housing-rent-income-recalc'], 'социальное жильё + изменение дохода')
     }
-    return intent('housing_support', 'жилищная помощь и социальное жильё', ['housing_support'], 'rent_assistance', ['housing-assistance-update-details'], 'социальное жильё/помощь на аренду')
+    return intent('housing_support', 'жилищная помощь и социальное жильё', ['housing_support'], 'rent_assistance', ['housing-assistance-update-details','housing-disabled-wheelchair-public-housing','housing-senior-income-support-options'], 'социальное жильё/помощь на аренду')
   }
 
   if (/налогов[а-яё]*\s+(?:льготн[а-яё]*\s+)?(?:единиц|балл)|льготн[а-яё]*\s+налогов[а-яё]*\s+единиц|3[,.]25|נקודות\s+זיכוי/iu.test(query)
@@ -137,7 +176,7 @@ export function detectIntent(text) {
     let preferred_slugs = []
     if (rule.key === 'unemployment') {
       if (/(?:сколько|максимум|на\s+какой).{0,20}(?:дн|срок)|иждивен/iu.test(query)) {
-        focus = 'entitlement_duration'; preferred_slugs = ['entitlement-days']
+        focus = 'entitlement_duration'; preferred_slugs = ['entitlement-days','unemployment-women-57-67-300']
       } else if (/12.{0,12}18|стаж|страхов[а-яё]*\s+период|ткуфат\s+ахшар/iu.test(query)) {
         focus = 'qualifying_period'; preferred_slugs = ['qualifying-period', 'eligibility-basics']
       } else if (/(?:первые|удерж|не\s+оплат|без\s+оплат).{0,30}(?:5|пять)\s+дн|(?:5|пять)\s+дн.{0,45}(?:не\s+оплат|удерж|кажд|четыр|тр[её]х|4\s*месяц|3\s*месяц)|когда.{0,20}(?:плат|деньг)|17.{0,8}чис/iu.test(query)) {
@@ -161,6 +200,10 @@ export function detectIntent(text) {
     return intent(rule.key, rule.label, rule.topics, focus, preferred_slugs, match[0])
   }
 
+  if (/пособи[ея]\s+по\s+старост|кицват\s+зикн|אזרח\s+ותיק/iu.test(query)) {
+    return intent('old_age', 'пособие по старости', ['old_age'], 'general', ['old-age-qualifying-period-woman','old-age-payment-date'], 'пособие по старости')
+  }
+
   if (/увол|сократ|прекрат[а-яё]*\s+работ|трудов[а-яё]*\s+договор.{0,35}(?:законч|расторг)/iu.test(query)) {
     return intent('employment_ambiguous', 'прекращение работы — вид права нужно уточнить', ['unemployment', 'severance'], 'general', [], 'общая трудовая формулировка', 'ambiguous')
   }
@@ -178,7 +221,7 @@ export function extractExplicitFacts(text) {
     || query.match(/(60|65|74|75|100)\s*%[^\n]{0,35}(?:нетрудоспособ|потер[а-яё]*\s+трудоспособ)/iu)
   if (degree) facts.push({ key: 'disability_degree', label: 'Степень потери трудоспособности', value: degree[1] + '%' })
 
-  if (/работодатель.{0,45}(?:отправил|оформил|инициировал).{0,25}(?:халат|неоплачиваем)/iu.test(query)) {
+  if (/работодатель.{0,45}(?:отправил|оформил|инициировал|решил).{0,45}(?:халат|неоплачиваем|за\s+свой\s+сч[её]т)/iu.test(query)) {
     facts.push({ key: 'halat_initiator', label: 'Инициатор ХАЛАТа', value: 'работодатель' })
   } else if (/(?:сам|сама|самостоятельно).{0,35}(?:попросил|уш[её]л).{0,25}(?:халат|неоплачиваем)/iu.test(query)) {
     facts.push({ key: 'halat_initiator', label: 'Инициатор ХАЛАТа', value: 'работник' })
