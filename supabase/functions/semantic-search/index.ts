@@ -6,7 +6,7 @@ const URL = Deno.env.get('SUPABASE_URL')!
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY')!
 const EMBED_MODEL = 'text-embedding-3-small'
 const ANSWER_MODEL = 'gpt-5-mini'
-const FUNCTION_VERSION = '23-benchmark-clarifications'
+const FUNCTION_VERSION = '24-housing-household'
 const ORIGINS = new Set(['https://vladimirlevitin.github.io','http://localhost:8000','http://127.0.0.1:8000'])
 
 function named(name:string):Record<string,string>{try{return JSON.parse(Deno.env.get(name)||'{}')}catch{return {}}}
@@ -61,6 +61,7 @@ async function synthesize(question:string,clarifications:any[],results:any[],int
     'Для пицуим по здоровью не утверждай, что заболевание должно быть вызвано работой. Важна связь состояния здоровья с решением прекратить конкретную работу.',
     'Если focus равен income_supplement, не складывай автоматически все пособия и другие выплаты семьи и не сравнивай эту сумму с 6 912. Эта сумма применима только к категории, прямо указанной в материалах; сначала классифицируй каждый вид дохода и отдельно учитывай финансовые активы.',
     'Если focus равен benefits_and_bills, не утверждай, что отсутствие доплаты до прожиточного минимума исключает все льготы пожилого гражданина: используй отдельные карточки по каждой льготе.',
+    'Если focus равен institution_and_housing, не говори, что о школе-интернате обязательно нужно сообщить жилищной компании только из-за самого факта обучения или ночёвок. Обязанность по жилищной части связывай только с подтверждённым изменением личного статуса или числа детей/состава семьи из соответствующей карточки; при неясности сначала уточни статус.',
     'Не пересказывай все полученные карточки. Используй только факты, прямо необходимые для ответа на original_question.',
     'Если материалы не отвечают на вопрос, выбери out_of_scope, запрети следующий вопрос и честно скажи, чего в базе нет.',
     'Пиши простым русским. Не проси паспортный номер или иные чувствительные данные. Извлекай не более шести кратких известных фактов.',
@@ -87,7 +88,7 @@ function controlledQuestion(intent:any,clarifications:any[],explicitFacts:any[],
   if(intent.key==='disability'&&intent.focus==='work_income_65'&&known.has('disability_degree'))return{ask:false,key:'',text:'',why:'',options:[]}
   if(intent.key==='disability'&&intent.focus==='work_and_benefit'&&!known.has('disability_degree'))return{ask:true,key:'disability_degree',text:'Какая степень потери трудоспособности указана в решении Битуах Леуми?',why:'От неё зависит таблица расчёта пособия при заработке.',options:[{label:'60% или 65%',value:'60_65'},{label:'74%',value:'74'},{label:'75% или 100%',value:'75_100'},{label:'Не знаю',value:'unknown'}]}
   if(intent.key==='old_age'&&intent.focus==='income_supplement'&&/страхов[а-яё]*\s+выплат/iu.test(question))return{ask:true,key:'insurance_payment_type',text:'Что это за страховая выплата и кто её выплачивает?',why:'Для доплаты к пособию по старости разные виды дохода учитываются по разным правилам; нельзя просто сложить все выплаты.',options:[{label:'Частная страховая или пенсионная компания',value:'private_insurance'},{label:'Битуах Леуми',value:'btl'},{label:'Другой источник',value:'other'},{label:'Не знаю',value:'unknown'}]}
-  if(intent.key==='child_disability_housing')return{ask:true,key:'institution_type',text:'Какой статус у интерната?',why:'От статуса учреждения зависит влияние на пособие ребёнка; жилищную помощь нужно проверять отдельно по фактическому проживанию.',options:[{label:'Специализированное учреждение',value:'specialized'},{label:'Обычная школа-интернат',value:'boarding_school'},{label:'Не знаю официальный статус',value:'unknown'}]}
+  if(intent.key==='child_disability_housing')return{ask:true,key:'institution_type',text:'Какой статус у интерната?',why:'От статуса учреждения зависит влияние на пособие ребёнка; жилищную помощь нужно проверять отдельно по официальному составу семьи.',options:[{label:'Специализированное учреждение',value:'specialized'},{label:'Обычная школа-интернат',value:'boarding_school'},{label:'Не знаю официальный статус',value:'unknown'}]}
   if(intent.key==='tax_credits'&&intent.focus==='child_6_12'&&/3[,.]25/iu.test(question)&&/(?:исполня[а-яё]*\s*6|6\s*лет)/iu.test(question))return{ask:false,key:'',text:'',why:'',options:[]}
   if(intent.key==='insurance_contributions'&&intent.focus==='old_age_employee'&&/получа[а-яё]*\s+пособи[ея]\s+по\s+старост/iu.test(question))return{ask:false,key:'',text:'',why:'',options:[]}
   const age=explicitFacts.find(x=>x.key==='age')
