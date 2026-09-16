@@ -1,8 +1,8 @@
 <!doctype html><meta charset="utf-8"><title>Tatiana collector</title><style>body{font:16px system-ui;margin:24px;max-width:900px}</style><h1>Сбор кейсов</h1><p id="status">Ожидаю данные от Facebook…</p><script>
-const VERSION='dom-v9';
+const VERSION='dom-v10';
 const T=/Татьяна\s+Берлин|Tatiana\s+Berlin/i;
 const n=s=>(s||'').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
-function cleanTail(s){return n((s||'').replace(/(?:Нравится|Like)\s*(?:Ответить|Reply)\s*(?:Поделиться|Share).*$/is,'').replace(/Комментировать как.*$/is,''))}
+function cleanTail(s){s=n(s||'');s=s.replace(/(?:Нравится|Like)\s*(?:Ответить|Reply)\s*(?:Поделиться|Share).*$/is,'');s=s.replace(/(?:Смотреть другие ответы|Посмотреть\s+\d+\s+ответ(?:а|ов)?|Ответить как\s+[^\n]+).*$/is,'');s=s.replace(/Комментировать как.*$/is,'');s=s.replace(/(?:\d+\s*){1,5}$/,'');return n(s)}
 function dedupe(s){s=n(s);let l=s.split('\n').map(n).filter(Boolean);if(l.length%2===0){const h=l.length/2,a=n(l.slice(0,h).join('\n')),b=n(l.slice(h).join('\n'));if(a===b)return a}return n(l.filter((x,i)=>i===0||x!==l[i-1]).join('\n'))}
 function questionText(s){s=dedupe(s);const marker='Поделился/-ась с Общедоступная группа';let k=s.indexOf(marker);if(k>=0)s=s.slice(k+marker.length);else{s=s.replace(/^.{0,120}?(?:\d+\s*(?:мин|ч|дн|день|дня|дней)\.?\s*·?\s*)/i,'')}return cleanTail(s)}
 function answerText(s){s=dedupe(s);let k=s.lastIndexOf('Администратор');if(k>=0)s=s.slice(k+'Администратор'.length);else{s=s.replace(/^Татьяна\s+Берлин/i,'').replace(/^Tatiana\s+Berlin/i,'')}return cleanTail(s)}
