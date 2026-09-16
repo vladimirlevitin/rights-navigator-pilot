@@ -30,7 +30,8 @@ select t.id, s.id, 'old-age-arnona-senior-2026',
   array['Скидка до 25% является муниципальной и может зависеть от местных правил.','Доходные пороги ежегодно меняются.'],
   '[]'::jsonb,
   array['арнона','75 лет','пожилой гражданин','25%','30%','100%','съемная квартира','скидка'],
-  'мне 75 лет съемная квартира скидки арнона пожилой гражданин пособие пока не получаю 2026 25 30 100 процентов доход прожиточный минимум'
+  'мне 75 лет съемная квартира скидки арнона пожилой гражданин пособие пока не получаю 2026 25 30 100 процентов доход прожиточный минимум',
+  true, '2026-09-17', true
 from public.topics t join public.sources s on s.slug='kz-old-age-arnona'
 where t.slug='old_age'
 on conflict (slug) do update set title=excluded.title,short_answer=excluded.short_answer,answer=excluded.answer,steps=excluded.steps,documents=excluded.documents,follow_up_questions=excluded.follow_up_questions,caveats=excluded.caveats,keywords=excluded.keywords,search_text=excluded.search_text,source_id=excluded.source_id,topic_id=excluded.topic_id,embedding=null,is_published=true,reviewed_on=excluded.reviewed_on,ai_embedding_allowed=true,updated_at=now();
@@ -50,7 +51,8 @@ select t.id, s.id, 'old-age-electricity-account-holder',
   array['Это правило относится именно к скидке на электричество; для других счетов требования могут отличаться.'],
   '[]'::jsonb,
   array['электричество','счет на имя','договор','50%','400 кВт','социальная надбавка'],
-  'супруг выходит на пенсию счета на жену переписать счет электричество скидка 50 процентов 400 квт договор на имя получателя социальная надбавка доплата прожиточный минимум'
+  'супруг выходит на пенсию счета на жену переписать счет электричество скидка 50 процентов 400 квт договор на имя получателя социальная надбавка доплата прожиточный минимум',
+  true, '2026-09-17', true
 from public.topics t join public.sources s on s.slug='kz-old-age-electricity'
 where t.slug='old_age'
 on conflict (slug) do update set title=excluded.title,short_answer=excluded.short_answer,answer=excluded.answer,steps=excluded.steps,documents=excluded.documents,follow_up_questions=excluded.follow_up_questions,caveats=excluded.caveats,keywords=excluded.keywords,search_text=excluded.search_text,source_id=excluded.source_id,topic_id=excluded.topic_id,embedding=null,is_published=true,reviewed_on=excluded.reviewed_on,ai_embedding_allowed=true,updated_at=now();
