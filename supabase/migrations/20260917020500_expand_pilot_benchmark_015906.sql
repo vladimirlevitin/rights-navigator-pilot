@@ -1,0 +1,313 @@
+-- Expand verified pilot coverage from benchmark batch tatiana_2026-09-17_015906.
+-- Tatiana's answers are treated as benchmark signals only; cards below are grounded in the cited official/rights sources.
+
+insert into public.sources (slug, publisher, title, url, language, is_official, is_published, checked_on) values
+  ('btl-old-age-benefits-booklet', 'Битуах Леуми', 'Льготы для получателей пособий', 'https://www.btl.gov.il/Publications/booklet/hebrew_booklet/Documents/579187-NEW-2020_3.pdf', 'he', true, true, '2026-09-17'),
+  ('btl-unemployment-women-57-67', 'Битуах Леуми', 'Льготы для безработных женщин 57–67 лет', 'https://www.btl.gov.il/benefits/Unemployment/Pages/zecoyot-nasim.aspx', 'he', true, true, '2026-09-17'),
+  ('btl-unemployment-duration-current', 'Битуах Леуми', 'Сколько времени можно получать пособие по безработице', 'https://www.btl.gov.il/benefits/Unemployment/Pages/tkufat_zakaut.aspx', 'he', true, true, '2026-09-17'),
+  ('btl-old-age-qualifying-woman-ru', 'Битуах Леуми', 'Страховой период для женщин', 'https://www.btl.gov.il/RussianHomePage/Benefits_ru/Vatikim_ru/tnaeyZekaut_ru/tkufatHachshara/Pages/TkufatHachsharaLeIsha.aspx', 'ru', true, true, '2026-09-17'),
+  ('btl-other-rights-old-age', 'Битуах Леуми', 'Проверка прав в других учреждениях и организациях', 'https://www.btl.gov.il/AllRights/Pages/mosdot.aspx?n_id=29', 'he', true, true, '2026-09-17'),
+  ('gov-public-housing-disabled-wheelchair', 'Министерство строительства и жилищного хозяйства', 'Заявление на квартиру в социальном жилье для людей с инвалидностью, постоянно пользующихся инвалидной коляской', 'https://www.gov.il/he/service/apartment_in_public_housing_for_disabled_people_for_disabled', 'he', true, true, '2026-09-17'),
+  ('gov-senior-housing', 'Министерство строительства и жилищного хозяйства', 'Заявление на жильё в доме для пожилых', 'https://www.gov.il/he/service/request_for_senior_housing', 'he', true, true, '2026-09-17'),
+  ('kz-severance-relocation', 'Коль Зхут', 'Пицуим работнику, уволившемуся из-за переезда', 'https://www.kolzchut.org.il/he/פיצויי_פיטורים_לעובד_שהתפטר_עקב_מעבר_דירה', 'he', false, true, '2026-09-17'),
+  ('kz-pension-contributions', 'Коль Зхут', 'Обязательное пенсионное страхование работников', 'https://www.kolzchut.org.il/he/פנסיה', 'he', false, true, '2026-09-17'),
+  ('btl-unpaid-leave-current', 'Битуах Леуми', 'Работник в неоплачиваемом отпуске', 'https://www.btl.gov.il/benefits/Unemployment/Pages/avthlat.aspx', 'he', true, true, '2026-09-17')
+on conflict (slug) do update set
+  publisher=excluded.publisher,
+  title=excluded.title,
+  url=excluded.url,
+  language=excluded.language,
+  is_official=excluded.is_official,
+  is_published=true,
+  checked_on=excluded.checked_on;
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'old-age-water-benefit',
+  'Льгота на воду при пособии по старости',
+  'Получатели пособия по старости с доплатой до прожиточного минимума, а также с доплатой по инвалидности входят в группу, для которой Битуах Леуми передаёт данные для водной льготы; адрес должен быть актуален.',
+  'Официальная памятка Битуах Леуми указывает, что получатели пособия по старости с доплатой до прожиточного минимума и получатели пособия по старости с доплатой по инвалидности имеют право на дополнительный объём воды по низкому тарифу. Битуах Леуми передаёт списки в водную систему. Адрес проживания должен быть актуален; льгота должна применяться автоматически после сопоставления данных у поставщика воды.',
+  array['Проверьте, что адрес проживания актуален в государственных реестрах.','Проверьте у водной корпорации, что вы числитесь получателем льготы по этому адресу.','Если льгота не появилась, сначала попросите водную корпорацию проверить список, затем при необходимости обратитесь в Битуах Леуми.'],
+  array['Справка о виде пособия по старости','Удостоверение личности и данные адреса'],
+  array['Получаете ли вы доплату до прожиточного минимума или доплату по инвалидности к пособию по старости?'],
+  array['Карточка описывает право по статусу пособия; техническое применение зависит от совпадения данных получателя и адреса у поставщика воды.'],
+  '[]'::jsonb,
+  array['вода','льгота на воду','социальная надбавка','пособие по старости','доплата по инвалидности','водная корпорация'],
+  'пособие по старости социальная надбавка доплата прожиточный минимум инвалидность льгота вода дополнительные кубометры низкий тариф водная корпорация Битуах Леуми автоматический список'
+from public.topics t join public.sources s on s.slug='btl-old-age-benefits-booklet'
+where t.slug='old_age'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'old-age-disability-supplement-benefits',
+  'Льготы после перехода с инвалидности на пособие по старости с доплатой по инвалидности',
+  'Переход на пособие по старости с доплатой по инвалидности не означает автоматическую потерю всех связанных льгот: официальная памятка Битуах Леуми относит эту группу к получателям ряда льгот.',
+  'В официальной памятке Битуах Леуми получатели пособия по старости с доплатой по инвалидности указаны среди получателей льготы на электричество, льготы на воду и льгот в больничной кассе. Для электричества счёт должен быть оформлен на имя получателя, а льготы по воде и в кассе передаются через списки. Если льгота исчезла после перехода на пособие по старости, это повод проверить совпадение данных и передачу статуса, а не автоматически считать, что право прекратилось.',
+  array['Сверьте точное название пособия в решении Битуах Леуми.','Для электричества проверьте, что договор оформлен на имя и номер удостоверения получателя.','Для воды проверьте адрес и наличие в списке водной корпорации.','Для льгот больничной кассы попросите кассу проверить статус, переданный Битуах Леуми.'],
+  array['Решение Битуах Леуми о пособии по старости с доплатой по инвалидности','Счёт за электричество или номер договора','Данные водной корпорации'],
+  array['Как именно называется доплата в решении Битуах Леуми?'],
+  array['Для арноны действуют отдельные муниципальные правила; её нужно проверять отдельно.'],
+  '[]'::jsonb,
+  array['пособие по старости','доплата по инвалидности','электричество','вода','больничная касса','льготы'],
+  'перешел с инвалидности на старость доплата по инвалидности отменили льготы электричество вода арнона больничная касса купат холим восстановить льготу список Битуах Леуми'
+from public.topics t join public.sources s on s.slug='btl-old-age-benefits-booklet'
+where t.slug='old_age'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'unemployment-women-57-67-300',
+  '300 дней авталы для женщин 57–67 лет',
+  'Женщины 57–67 лет, родившиеся 1 января 1960 года или позже, могут иметь право максимум на 300 дней пособия по безработице в течение 18 месяцев.',
+  'Битуах Леуми выделяет специальное правило для женщин в возрасте 57–67 лет, родившихся 1 января 1960 года или позже: при наличии права на пособие максимальный период увеличен до 300 дней в течение 18 месяцев. Специальное правило сформулировано без привязки к числу иждивенцев. Обычная таблица для возраста 45+ предусматривает до 175 дней, но для этой группы женщин действует специальное увеличение.',
+  array['Проверьте дату рождения и возраст на дату начала безработицы.','Отдельно проверьте обычные условия права на пособие, включая страховой период.','Для повторной заявки проверьте правила повторных требований и уже выплаченные дни.'],
+  array['Удостоверение личности','Данные о периодах работы и предыдущих выплатах авталы'],
+  array['Когда началась текущая или предполагаемая новая безработица?','Были ли выплаты по предыдущей заявке в последние 11 месяцев?'],
+  array['Эта карточка определяет специальный максимальный период, но не заменяет проверку остальных условий права.'],
+  '[]'::jsonb,
+  array['300 дней','женщины 57 67','предпенсионный возраст','автала','безработица','18 месяцев'],
+  'автала пособие по безработице женщина 57 58 59 60 61 62 63 64 65 66 67 лет родилась после 1 января 1960 300 дней 18 месяцев предпенсионный возраст доход мужа супруг иждивенцы'
+from public.topics t join public.sources s on s.slug='btl-unemployment-women-57-67'
+where t.slug='unemployment'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'unemployment-repeat-claims',
+  'Повторная заявка на пособие по безработице',
+  'При повторной заявке год за годом Битуах Леуми пересчитывает доступные дни помесячно с учётом дней авталы, выплаченных за предыдущие 11 месяцев.',
+  'Официальная страница Битуах Леуми не формулирует общее правило «пособие можно получить только один раз». При повторной заявке количество оплачиваемых дней в каждом месяце проверяется заново: учитываются дни, оплаченные в предыдущие 11 месяцев. Если за эти 11 месяцев уже выплачен весь максимум, в текущем месяце выплаты не будет; если выплачено меньше максимума, можно получить разницу в пределах действующего лимита. Новая заявка также требует выполнения обычных условий права.',
+  array['Проверьте дату начала предыдущего периода права.','Посчитайте, сколько дней авталы выплачено за 11 месяцев до каждого месяца новой выплаты.','Проверьте, выполнен ли новый страховой период для подачи новой заявки.'],
+  array['История выплат пособия по безработице','Данные о новой занятости и страховом периоде'],
+  array['Когда началась предыдущая заявка и когда закончились фактические выплаты?','Когда планируется новая регистрация?'],
+  array['Для лиц младше 40 лет действуют дополнительные ограничения повторных заявок в течение четырёх лет.','Для женщин 57–67 лет нужно одновременно учитывать специальный максимум 300 дней и период 18 месяцев.'],
+  '[]'::jsonb,
+  array['повторная автала','повторная заявка','снова безработица','11 месяцев','год за годом'],
+  'повторно получить пособие по безработице автала второй раз снова через год 300 дней 175 дней предыдущая заявка последние 11 месяцев новая заявка повторная безработица'
+from public.topics t join public.sources s on s.slug='btl-unemployment-duration-current'
+where t.slug='unemployment'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'old-age-qualifying-period-woman',
+  'Страховой период женщины для пособия по старости',
+  'Для женщины, которой нужен страховой период, достаточно выполнить один из вариантов: 60 месяцев страхования за последние 10 лет, 144 месяца, либо не менее 60 месяцев при условии, что застрахованных месяцев с первого получения резидентства больше, чем незастрахованных.',
+  'Битуах Леуми указывает три альтернативных варианта страхового периода для женщин, которым он требуется: 60 месяцев в последние 10 лет до соответствующего возраста; 144 месяца страхования; либо не менее 60 месяцев, если число застрахованных месяцев с даты первого получения статуса жителя Израиля превышает число незастрахованных месяцев. Некоторые женщины освобождены от этого условия. Если нужный период не накоплен к пенсионному возрасту, его можно продолжать накапливать; отдельные правила действуют при возрасте безусловного права.',
+  array['Уточните семейное положение и подпадает ли женщина под освобождение от страхового периода.','Получите в Битуах Леуми историю страховых периодов.','Сравните фактически накопленные месяцы с тремя альтернативными условиями.'],
+  array['История страхования Битуах Леуми','Данные о периодах резидентства и работы'],
+  array['Каково семейное положение?','Сколько месяцев страхования указано в Битуах Леуми?'],
+  array['Возраст начала права для женщин зависит от даты рождения и доходов; эта карточка описывает только страховой период.'],
+  '[]'::jsonb,
+  array['страховой период','144 месяца','60 месяцев','вернувшийся житель','пособие по старости','женщина'],
+  'пособие по старости страховой стаж страховой период 144 месяца 60 месяцев последние 10 лет вернувшийся житель тошав хозер репатриировались уехали вернулись женщина 63 года Битуах Леуми'
+from public.topics t join public.sources s on s.slug='btl-old-age-qualifying-woman-ru'
+where t.slug='old_age'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'old-age-income-support-arnona',
+  'Арнона для получателей пособия по прожиточному минимуму после пенсионного возраста',
+  'Битуах Леуми относит к потенциальным получателям скидки на арнону и тех, кто старше пенсионного возраста получает пособие по прожиточному минимуму, даже если пособие по старости им не назначено.',
+  'На странице Битуах Леуми о правах в других учреждениях среди групп, которые могут иметь право на скидку на арнону, прямо указаны получатели пособия по старости с доплатой до прожиточного минимума, получатели пособия по старости с доплатой по инвалидности, а также получатели пособия по прожиточному минимуму старше пенсионного возраста, даже если они не имеют права на пособие по старости. Размер и порядок скидки определяет местная власть.',
+  array['Получите справку Битуах Леуми о виде текущего пособия.','Обратитесь в муниципалитет за оформлением скидки и приложите подтверждение пособия.','Проверьте местные правила и площадь, к которой применяется скидка.'],
+  array['Справка Битуах Леуми о пособии','Документы на жильё/регистрация держателя арноны'],
+  array['Достигнут ли уже пенсионный возраст по вашей дате рождения?','Как именно называется текущее пособие в решении Битуах Леуми?'],
+  array['Размер скидки и процедура зависят от муниципалитета.'],
+  '[]'::jsonb,
+  array['арнона','прожиточный минимум','без пособия по старости','пенсионный возраст','скидка'],
+  'отказ в пособии по старости назначили прожиточный минимум достиг пенсионного возраста скидка арнона муниципалитет даже без пособия по старости income support'
+from public.topics t join public.sources s on s.slug='btl-other-rights-old-age'
+where t.slug='old_age'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'housing-disabled-wheelchair-public-housing',
+  'Социальное жильё для человека с инвалидностью, постоянно пользующегося инвалидной коляской',
+  'Официальный маршрут Минстроя предусматривает социальное жильё для бездомных заявителей с постоянной 100% инвалидностью и постоянной привязанностью к инвалидной коляске при выполнении условий по доходу.',
+  'Министерство строительства публикует отдельный маршрут для людей с инвалидностью, постоянно пользующихся инвалидной коляской. Для одинокого заявителя требуется отсутствие собственного жилья, доход не выше средней зарплаты, подтверждение постоянной 100% инвалидности и постоянного использования инвалидной коляски, а также функциональный отчёт и документы о доходах. Одна только формулировка «100% инвалидность» без признака постоянной коляски не позволяет применять именно эту официальную категорию.',
+  array['Уточните, пользуется ли заявитель инвалидной коляской постоянно.','Проверьте отсутствие жилья и уровень дохода.','Если условия категории подходят, подайте заявление через одну из компаний регистрации жилищной помощи.'],
+  array['Подтверждение 100% постоянной инвалидности и постоянной коляски','Функциональный отчёт больничной кассы','6 последних подтверждений дохода','4 последних банковских выписки'],
+  array['Пользуетесь ли вы инвалидной коляской постоянно?'],
+  array['Карточка описывает конкретную официальную категорию и не утверждает, что она охватывает всех людей со 100% инвалидностью.'],
+  '[]'::jsonb,
+  array['социальное жильё','инвалидность 100%','инвалидная коляска','отдельная квартира','Минстрой'],
+  'социальное жилье инвалидность до пенсионного возраста 100 процентов отдельная квартира хостел инвалидная коляска חסר דירה משרד השיכון'
+from public.topics t join public.sources s on s.slug='gov-public-housing-disabled-wheelchair'
+where t.slug='housing_support'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'housing-senior-income-support-options',
+  'Жилищные варианты для пожилых получателей пособий на проживание',
+  'Для домов «Гиль ха-Захав» Минстрой проверяет отсутствие жилья, способность жить самостоятельно и вид пособия; для некоторых домов с гибким возрастом допускаются получатели пособия по прожиточному минимуму или 75%+ потери трудоспособности.',
+  'Официальная страница Минстроя описывает отдельную программу домов «Гиль ха-Захав». Для пожилых граждан одним из условий является пособие по старости с доплатой до прожиточного минимума или с доплатой по инвалидности. В домах с гибким возрастом, когда это предусмотрено программой, могут рассматриваться лица 55+ или 60+, не являющиеся пожилыми гражданами, если они получают пособие по прожиточному минимуму либо пособие при потере трудоспособности 75% и выше. Это отдельная жилищная программа и не равна автоматически праву на обычную социальную квартиру.',
+  array['Уточните, идёт ли речь об обычном социальном жилье или о доме «Гиль ха-Захав».','Проверьте официальный вид пособия и возраст.','Подайте заявление через компанию регистрации жилищной помощи, если категория подходит.'],
+  array['Удостоверение личности','Справка о пособии Битуах Леуми','Документы об отсутствии жилья'],
+  array['Вы хотите обычную социальную квартиру или жильё «Гиль ха-Захав»?'],
+  array['Право на конкретную программу зависит от дополнительных условий и решения жилищной комиссии.'],
+  '[]'::jsonb,
+  array['социальное жильё','Гиль ха-Захав','прожиточный минимум','пенсионный возраст','очередь'],
+  'пожилые социальное жилье очередь прожиточный минимум отказ в пособии по старости гиль ха-захав дом престарелых 55 60 лет инвалидность 75 процентов Минстрой'
+from public.topics t join public.sources s on s.slug='gov-senior-housing'
+where t.slug='housing_support'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'severance-relocation-development-area',
+  'Пицуим при увольнении из-за переезда в район развития',
+  'Переезд из населённого пункта вне района развития в населённый пункт из установленного перечня может при определённых условиях сделать увольнение по собственному желанию эквивалентным увольнению работодателем для пицуим.',
+  'Коль Зхут со ссылкой на закон и правила указывает: при переезде из населённого пункта, не относящегося к району развития, в населённый пункт из установленного перечня увольнение может давать право на пицуим, если работник проживает в новом месте не менее шести месяцев и переезд реально затруднил продолжение работы у прежнего работодателя. Акко включён в опубликованный перечень населённых пунктов района развития. Причинную связь между переездом и увольнением нужно уметь подтвердить.',
+  array['Проверьте, входит ли новый населённый пункт в действующий перечень.','Сохраните доказательства фактического проживания в новом месте не менее шести месяцев.','Письменно свяжите причину увольнения с переездом и невозможностью разумно продолжать прежнюю работу.'],
+  array['Подтверждение нового адреса и срока проживания','Письмо об увольнении','Документы о трудовых отношениях'],
+  array['Сколько времени вы уже живёте или планируете жить по новому адресу?','Насколько переезд затрудняет продолжение прежней работы?'],
+  array['Базовые условия и расчёт пицуим, включая стаж и пенсионные отчисления, проверяются отдельно.'],
+  '[]'::jsonb,
+  array['переезд','район развития','Акко','пицуим','увольнение по собственному желанию'],
+  'пицуим переезд Ариэль Акко район развития אזור פיתוח увольнение по собственному желанию 6 месяцев причинная связь продолжать работу выходное пособие'
+from public.topics t join public.sources s on s.slug='kz-severance-relocation'
+where t.slug='severance'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+insert into public.knowledge_cards (
+  topic_id, source_id, slug, title, short_answer, answer, steps, documents,
+  follow_up_questions, caveats, hebrew_terms, keywords, search_text,
+  is_published, reviewed_on, ai_embedding_allowed
+)
+select t.id, s.id, 'employment-pension-contributions-basic',
+  'Базовая обязанность работодателя делать пенсионные отчисления',
+  'Работница с 20 лет обычно подпадает под обязательное пенсионное страхование; при отсутствии действующей пенсионной программы на момент приёма общее правило предусматривает начало права после шести месяцев работы, а при действующей программе — с первого дня.',
+  'По справочнику Коль Зхут, основанному на общеобязательном расширительном указе, работники имеют право на обязательное пенсионное страхование. Для женщины возраст начала общего права — 20 лет. Если при приёме не было действующей пенсионной программы, общее правило даёт право после шести месяцев у работодателя. Если действующая программа была, право возникает с первого рабочего дня с последующим перечислением по установленным срокам. Отсутствие отчислений на протяжении двух лет у 23-летней работницы требует отдельной проверки и требования о восполнении обязательных отчислений.',
+  array['Проверьте, была ли действующая пенсионная программа до начала этой работы.','Соберите расчётные листки и отчёт пенсионного фонда за весь период.','Письменно потребуйте у работодателя исправить недостающие отчисления.','При отказе рассмотрите обращение в трудовой суд или орган надзора за трудовым законодательством.'],
+  array['Расчётные листки','Отчёт пенсионного фонда','Трудовой договор или уведомление об условиях труда'],
+  array['Была ли действующая пенсионная программа до начала этой работы?'],
+  array['В отдельных отраслях или договорах могут действовать более выгодные сроки и ставки.'],
+  '[]'::jsonb,
+  array['пенсионные отчисления','пенсионный фонд','23 года','6 месяцев','работодатель','пицуим'],
+  'работодатель не делал пенсионные отчисления пенсионная программа компонент пицуим женщина 23 года два года работы 20 лет 6 месяцев обязательная пенсия'
+from public.topics t join public.sources s on s.slug='kz-pension-contributions'
+where t.slug='employment_rights'
+on conflict (slug) do update set
+  topic_id=excluded.topic_id, source_id=excluded.source_id, title=excluded.title,
+  short_answer=excluded.short_answer, answer=excluded.answer, steps=excluded.steps,
+  documents=excluded.documents, follow_up_questions=excluded.follow_up_questions,
+  caveats=excluded.caveats, keywords=excluded.keywords, search_text=excluded.search_text,
+  embedding=null, is_published=true, reviewed_on=excluded.reviewed_on,
+  ai_embedding_allowed=true, updated_at=now();
+
+-- Correct the general unemployment-duration card: 175 days is not the maximum for the special 57–67 female group.
+update public.knowledge_cards k
+set source_id=s.id,
+    short_answer='Обычный максимум зависит от возраста и числа иждивенцев; для возраста 45+ это обычно до 175 дней. Для женщин 57–67 лет, родившихся 1.1.1960 или позже, действует специальный максимум до 300 дней в течение 18 месяцев.',
+    answer='По официальной таблице обычный максимум составляет от 50 до 175 дней в зависимости от возраста и, в некоторых возрастных категориях, числа иждивенцев. Для возраста 45+ общий максимум — до 175 дней. Отдельное правило действует для женщин 57–67 лет, родившихся 1 января 1960 года или позже: до 300 дней в течение 18 месяцев. Для повторных заявок дополнительно учитываются дни, выплаченные в предыдущие 11 месяцев.',
+    caveats=array['Для женщин 57–67 лет, родившихся 1.1.1960 или позже, применяется специальное правило 300 дней/18 месяцев.','Для повторных заявок действует помесячный учёт ранее выплаченных дней.'],
+    keywords=array['сколько дней','срок','175','300','иждивенцы','57 67','повторная заявка'],
+    search_text='сколько дней платят срок 50 67 100 138 175 300 возраст иждивенцы 12 месяцев 18 месяцев женщины 57 67 повторная заявка מספר ימי הזכאות',
+    embedding=null,
+    reviewed_on='2026-09-17',
+    updated_at=now()
+from public.sources s
+where k.slug='entitlement-days' and s.slug='btl-unemployment-duration-current';
+
+-- Strengthen the existing HALAT card with the current official 30-day/vacation-offset rule.
+update public.knowledge_cards k
+set source_id=s.id,
+    short_answer='Если работодатель отправил в ХАЛАТ минимум на 30 дней, право на авталу возможно при выполнении остальных условий; оставшиеся оплачиваемые дни отпуска сдвигают начало выплаты, но не сокращают сам срок ХАЛАТа.',
+    answer='Битуах Леуми указывает: при ХАЛАТе по инициативе работодателя право на пособие по безработице возможно, если отпуск длится не менее 30 дней и выполнены остальные условия. Если у работника остались оплачиваемые дни ежегодного отпуска, пособие начнут платить только после зачёта такого количества дней. Эти дни не уменьшают официальную продолжительность ХАЛАТа. Добровольный ХАЛАТ работника с 2.7.2021 не даёт права на пособие по безработице.',
+    steps=array['Получите от работодателя письменное подтверждение периода ХАЛАТа и остатка отпускных дней.','Зарегистрируйтесь в Службе занятости вскоре после начала ХАЛАТа.','Подайте заявление на пособие по безработице и приложите подтверждение работодателя.'],
+    documents=array['Письмо работодателя о ХАЛАТе с датами','Подтверждение остатка ежегодного отпуска'],
+    follow_up_questions=array['Кто инициировал ХАЛАТ?','На какой срок вас отправили?','Сколько оплачиваемых отпускных дней осталось?'],
+    caveats=array['ХАЛАТ по инициативе работника не даёт права на авталу по этому правилу.','Остальные условия права на пособие по безработице, включая страховой период, проверяются отдельно.'],
+    keywords=array['халат','неоплачиваемый отпуск','за свой счёт','30 дней','отпускные дни','работодатель'],
+    search_text='халат חל״ת неоплачиваемый отпуск за свой счет сидеть дома весь месяц работодатель отправил 30 дней отпускные дни остаток отпуска пособие по безработице автала',
+    embedding=null,
+    reviewed_on='2026-09-17',
+    updated_at=now()
+from public.sources s
+where k.slug='unpaid-leave' and s.slug='btl-unpaid-leave-current';
