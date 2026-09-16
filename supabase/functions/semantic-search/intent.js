@@ -34,8 +34,56 @@ function intent(key, label, topics, focus, preferred_slugs, matched_term, confid
 export function detectIntent(text) {
   const query = expandRightsTerms(text).toLowerCase()
 
+  // Explicitly unsupported pension-capital withdrawals must not leak into salary/disability rules.
   if (/(?:снят|вывест|получить).{0,45}(?:пенсионн|накоплен|страхов[а-яё]*\s+компан)|(?:35\s*%|налог).{0,45}(?:пенсионн|накоплен)/iu.test(query)) {
     return intent('out_of_scope', 'снятие пенсионных накоплений — тема пока вне базы', [], 'pension_capital_withdrawal', [], 'пенсионные накопления/снятие', 'explicit')
+  }
+
+  // Child with disability moving to a boarding/institution setting: child benefit + housing can both matter.
+  if (/(?:реб[её]нок|доч[ьи]|сын|13[-\s]?лет).{0,120}(?:интернат|пансион|учрежден)|(?:интернат|пансион|учрежден).{0,120}(?:реб[её]нок|доч[ьи]|сын)/iu.test(query)
+      && /инвалид|пособ|битуах|амигур|жиль/iu.test(query)) {
+    return intent('child_disability_housing', 'ребёнок с инвалидностью — учреждение и жилищная помощь', ['child_disability','housing_support'], 'institution_and_housing', ['child-disability-institution','housing-assistance-update-details'], 'ребёнок + интернат/учреждение')
+  }
+
+  // Resignation after childbirth specifically to care for the child.
+  if (/(?:родил[аи]|после\s+род|отпуск[а-яё]*\s+по\s+уходу\s+за\s+реб[её]нк|уход[а-яё]*\s+за\s+реб[её]нк).{0,180}(?:увол|уйти|не\s+планир[а-яё]*\s+возвращ|выходн[а-яё]*\s+пособ|пиц)|(?:увол|уйти|выходн[а-яё]*\s+пособ|пиц).{0,180}(?:родил[аи]|после\s+род|уход[а-яё]*\s+за\s+реб[её]нк)/iu.test(query)) {
+    return intent('severance', 'выходное пособие — пицуим', ['severance'], 'childcare_resignation', ['severance-childcare-resignation'], 'увольнение для ухода за ребёнком после родов')
+  }
+
+  // Migraine-specific medical disability criteria.
+  if (/мигрен/iu.test(query) && /инвалид|пособ|финанс|битуах|работ|трудоспособ/iu.test(query)) {
+    return intent('disability', 'общая инвалидность — мигрень', ['disability'], 'migraine', ['disability-migraine-criteria','disability-first-application','disability-application-process'], 'мигрень + инвалидность/поддержка')
+  }
+
+  // Exact 65% incapacity earnings table for 2026.
+  if (/(?:степен[ьи].{0,30}(?:нетрудоспособ|потер[а-яё]*\s+трудоспособ)|нетрудоспособност[ьи]).{0,20}65\s*%|65\s*%.{0,35}(?:нетрудоспособ|потер[а-яё]*\s+трудоспособ)/iu.test(query)
+      && /зарплат|доход|зарабат|работ/iu.test(query)) {
+    return intent('disability', 'пособие и работа при инвалидности', ['disability'], 'work_income_65', ['disability-income-65-2026'], '65% нетрудоспособности + заработок')
+  }
+
+  // Old-age income supplement must win over mentions of disability/special services in spouse income.
+  if (/(?:социальн[а-яё]*\s+надбав|доплат[а-яё]*\s+(?:до\s+)?(?:прожиточн|доход)|השלמת\s+הכנסה)/iu.test(query)
+      && /(?:пособи[ея]\s+по\s+старост|пенси|мне\s+(?:6[7-9]|7\d|8\d)\s+лет|возраст.{0,10}(?:6[7-9]|7\d|8\d))/iu.test(query)) {
+    return intent('old_age', 'пособие по старости и доплата до прожиточного минимума', ['old_age'], 'income_supplement', ['old-age-income-supplement-2026','old-age-income-supplement-assets-2026'], 'пособие по старости/возраст + социальная надбавка')
+  }
+
+  // Discounts and account-holder questions around retirement/old age.
+  if (/(?:выход[а-яё]*\s+на\s+пенси|выходит?\s+на\s+пенси|пособи[ея]\s+по\s+старост|мне\s+(?:6[7-9]|7\d|8\d)\s+лет).{0,150}(?:скидк|льгот|сч[её]т|перепис)|(?:скидк|льгот|сч[её]т|перепис).{0,150}(?:пенси|пособи[ея]\s+по\s+старост|мне\s+(?:6[7-9]|7\d|8\d)\s+лет)/iu.test(query)) {
+    return intent('old_age', 'льготы в пенсионном возрасте', ['old_age'], 'benefits_and_bills', ['old-age-supplement-benefits','old-age-discount-account-holder','old-age-arnona-senior-2026','old-age-electricity-account-holder'], 'пенсионный возраст + льготы/счета')
+  }
+
+  // Public housing / rent assistance. Child-institution case is handled above first.
+  if (/амигур|amigur|хостел|социальн[а-яё]*\s+жиль|общественн[а-яё]*\s+жиль|помощ[ьи]\s+на\s+аренд|помощ[ьи]\s+в\s+аренд|субсид[а-яё]*\s+на\s+аренд/iu.test(query)) {
+    if (/(?:доход|пенси).{0,80}(?:учитыва|перерасч|оплат|квартплат)|(?:учитыва|перерасч|квартплат).{0,80}(?:доход|пенси)/iu.test(query)) {
+      return intent('housing_support', 'жилищная помощь и социальное жильё', ['housing_support'], 'rent_income_recalc', ['public-housing-rent-income-recalc'], 'социальное жильё + изменение дохода')
+    }
+    return intent('housing_support', 'жилищная помощь и социальное жильё', ['housing_support'], 'rent_assistance', ['housing-assistance-update-details'], 'социальное жильё/помощь на аренду')
+  }
+
+  // Tax credit points for children.
+  if (/налогов[а-яё]*\s+(?:льготн[а-яё]*\s+)?(?:единиц|балл)|льготн[а-яё]*\s+налогов[а-яё]*\s+единиц|3[,.]25|נקודות\s+זיכוי/iu.test(query)
+      && /реб[её]н|дет|отец|мать|родител|расч[её]тн[а-яё]*\s+лист|тлуш|2026/iu.test(query)) {
+    return intent('tax_credits', 'налоговые льготные единицы', ['tax_credits'], 'child_6_12', ['tax-credit-father-child-6-12-2026'], 'налоговые единицы + ребёнок')
   }
 
   if (/(?:пособи[ея]\s+по\s+старост|кицват\s+зикн|אזרח\s+ותיק).{0,55}(?:выплат|поступ|дата|когда|числ)|(?:выплат|когда|дата).{0,55}(?:пособи[ея]\s+по\s+старост)/iu.test(query)) {
@@ -134,6 +182,10 @@ export function extractExplicitFacts(text) {
   const facts = []
   const age = query.match(/(?:мне|возраст)\s*(\d{2})\s*(?:лет|год)?/iu)
   if (age) facts.push({ key: 'age', label: 'Возраст', value: age[1] + ' лет' })
+
+  const degree = query.match(/(?:степен[ьи].{0,30}(?:нетрудоспособ|потер[а-яё]*\s+трудоспособ)|нетрудоспособност[ьи])[^0-9]{0,20}(60|65|74|75|100)\s*%/iu)
+    || query.match(/(60|65|74|75|100)\s*%[^\n]{0,35}(?:нетрудоспособ|потер[а-яё]*\s+трудоспособ)/iu)
+  if (degree) facts.push({ key: 'disability_degree', label: 'Степень потери трудоспособности', value: degree[1] + '%' })
 
   if (/работодатель.{0,45}(?:отправил|оформил|инициировал).{0,25}(?:халат|неоплачиваем)/iu.test(query)) {
     facts.push({ key: 'halat_initiator', label: 'Инициатор ХАЛАТа', value: 'работодатель' })
