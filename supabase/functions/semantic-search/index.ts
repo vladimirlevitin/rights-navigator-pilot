@@ -6,7 +6,7 @@ const URL = Deno.env.get('SUPABASE_URL')!
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY')!
 const EMBED_MODEL = 'text-embedding-3-small'
 const ANSWER_MODEL = 'gpt-5-mini'
-const FUNCTION_VERSION = '20-benchmark-routing'
+const FUNCTION_VERSION = '21-benchmark-retrieval'
 const ORIGINS = new Set(['https://vladimirlevitin.github.io','http://localhost:8000','http://127.0.0.1:8000'])
 
 function named(name:string):Record<string,string>{try{return JSON.parse(Deno.env.get(name)||'{}')}catch{return {}}}
@@ -18,7 +18,7 @@ function headers(){const h:Record<string,string>={apikey:SERVICE_KEY!,'Content-T
 async function db(path:string,options:RequestInit={}){const r=await fetch(URL+'/rest/v1/'+path,{...options,headers:{...headers(),...(options.headers||{})}});if(!r.ok)throw new Error('database '+r.status);const t=await r.text();return t?JSON.parse(t):null}
 async function logRun(row:any){try{await db('navigator_runs',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(row)})}catch(e){console.error('log failed',e instanceof Error?e.message:e)}}
 async function embed(input:string[]){const r=await fetch('https://api.openai.com/v1/embeddings',{method:'POST',headers:{Authorization:'Bearer '+OPENAI_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:EMBED_MODEL,input,encoding_format:'float'})});if(!r.ok)throw new Error('embedding '+r.status);const p=await r.json();return p.data.sort((a:any,b:any)=>a.index-b.index).map((x:any)=>x.embedding)}
-function merge(semantic:any[],lexical:any[]){const m=new Map<string,any>();const lm=Math.max(...lexical.map(x=>Number(x.score)||0),.001);semantic.forEach(x=>m.set(x.slug,{...x,semantic_score:Number(x.score)||0,lexical_score:0,lexical_raw:0}));lexical.forEach(x=>{const raw=Number(x.score)||0,y=m.get(x.slug)||{...x,semantic_score:0};y.lexical_raw=raw;y.lexical_score=raw/lm;m.set(x.slug,y)});return [...m.values()].map(x=>({...x,score:x.semantic_score*.76+x.lexical_score*.24})).sort((a,b)=>b.score-a.score).slice(0,8)}
+function merge(semantic:any[],lexical:any[]){const m=new Map<string,any>();const lm=Math.max(...lexical.map(x=>Number(x.score)||0),.001);semantic.forEach(x=>m.set(x.slug,{...x,semantic_score:Number(x.score)||0,lexical_score:0,lexical_raw:0}));lexical.forEach(x=>{const raw=Number(x.score)||0,y=m.get(x.slug)||{...x,semantic_score:0};y.lexical_raw=raw;y.lexical_score=raw/lm;m.set(x.slug,y)});return [...m.values()].map(x=>({...x,score:x.semantic_score*.76+x.lexical_score*.24})).sort((a,b)=>b.score-a.score)}
 function outputText(p:any){if(typeof p.output_text==='string')return p.output_text;for(const i of p.output||[])for(const c of i.content||[])if(c.type==='output_text')return c.text;throw new Error('no output')}
 function schema(slugs:string[]){const slug={type:'string',enum:slugs.length?slugs:['none']};const fact={type:'object',additionalProperties:false,required:['label','value'],properties:{label:{type:'string'},value:{type:'string'}}};const cited={type:'object',additionalProperties:false,required:['text','source_slugs'],properties:{text:{type:'string'},source_slugs:{type:'array',items:slug}}};return{type:'object',additionalProperties:false,required:['normalized_question','known_facts','missing_facts','status','headline','findings','next_steps','next_question','routing','limitations','applied_slugs'],properties:{normalized_question:{type:'string'},known_facts:{type:'array',items:fact},missing_facts:{type:'array',items:{type:'object',additionalProperties:false,required:['key','label','why'],properties:{key:{type:'string'},label:{type:'string'},why:{type:'string'}}}},status:{type:'string',enum:['needs_clarification','preliminary_answer','out_of_scope']},headline:{type:'string'},findings:{type:'array',items:cited},next_steps:{type:'array',items:cited},next_question:{type:'object',additionalProperties:false,required:['ask','key','text','why','options'],properties:{ask:{type:'boolean'},key:{type:'string'},text:{type:'string'},why:{type:'string'},options:{type:'array',items:{type:'object',additionalProperties:false,required:['label','value'],properties:{label:{type:'string'},value:{type:'string'}}}}}},routing:{type:'object',additionalProperties:false,required:['type','title','explanation','prepared_question'],properties:{type:{type:'string',enum:['self_service','community_question','professional_help','out_of_scope']},title:{type:'string'},explanation:{type:'string'},prepared_question:{type:'string'}}},limitations:{type:'array',items:{type:'string'}},applied_slugs:{type:'array',items:slug}}}}
 function answers(value:unknown){if(!Array.isArray(value))return[];return value.slice(0,5).map((x:any)=>({key:String(x?.key||'').slice(0,80),question:String(x?.question||'').slice(0,300),answer:String(x?.answer||'').slice(0,300)})).filter((x:any)=>x.answer)}
@@ -82,6 +82,7 @@ function controlledQuestion(intent:any,clarifications:any[],explicitFacts:any[],
     if(!known.has('paid_leave'))return{ask:true,key:'paid_leave',text:'Остались ли у вас неиспользованные оплачиваемые дни отпуска?',why:'Их наличие может повлиять на начало выплаты.',options:[{label:'Да',value:'yes'},{label:'Нет',value:'no'},{label:'Не знаю',value:'unknown'}]}
   }
   if(intent.key==='disability'&&intent.focus==='work_and_benefit'&&!known.has('disability_degree'))return{ask:true,key:'disability_degree',text:'Какая степень потери трудоспособности указана в решении Битуах Леуми?',why:'От неё зависит таблица расчёта пособия при заработке.',options:[{label:'60% или 65%',value:'60_65'},{label:'74%',value:'74'},{label:'75% или 100%',value:'75_100'},{label:'Не знаю',value:'unknown'}]}
+  if(intent.key==='insurance_contributions'&&intent.focus==='old_age_employee'&&/получа[а-яё]*\s+пособи[ея]\s+по\s+старост/iu.test(question))return{ask:false,key:'',text:'',why:'',options:[]}
   const age=explicitFacts.find(x=>x.key==='age')
   if(intent.key==='unemployment'&&Number.parseInt(age?.value||'0',10)>=45&&/(?:сколько|срок|дн)/iu.test(question))return{ask:false,key:'',text:'',why:'',options:[]}
   return modelQuestion
@@ -94,8 +95,7 @@ function sanitize(s:any,results:any[],clarifications:any[],intent:any,explicitFa
   let q={...s.next_question,options:(s.next_question?.options||[]).slice(0,4).map((x:any)=>({label:String(x.label||'').slice(0,100),value:String(x.value||'').slice(0,100)}))}
   q=controlledQuestion(intent,clarifications,explicitFacts,question,q)
   if(clarifications.length>=3||usedKeys.has(q.key)||q.options.length<2){q={ask:false,key:'',text:'',why:'',options:[]}}
-  const routing={...s.routing}
-  return{...s,known_facts:facts,missing_facts:missing,next_question:q,routing,findings:(s.findings||[]).map((x:any)=>({...x,source_slugs:clean(x.source_slugs)})),next_steps:(s.next_steps||[]).map((x:any)=>({...x,source_slugs:clean(x.source_slugs)})),applied_slugs:clean(s.applied_slugs)}
+  return{...s,known_facts:facts,missing_facts:missing,next_question:q,routing:{...s.routing},findings:(s.findings||[]).map((x:any)=>({...x,source_slugs:clean(x.source_slugs)})),next_steps:(s.next_steps||[]).map((x:any)=>({...x,source_slugs:clean(x.source_slugs)})),applied_slugs:clean(s.applied_slugs)}
 }
 
 Deno.serve(async(req:Request)=>{
@@ -133,8 +133,8 @@ Deno.serve(async(req:Request)=>{
     if(missing.length)await Promise.all(missing.map((x:any,i:number)=>db('knowledge_cards?id=eq.'+x.id,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({embedding:vectors[i+1]})})))
 
     const [semantic,lexical]=await Promise.all([
-      db('rpc/match_knowledge_semantic',{method:'POST',body:JSON.stringify({query_embedding:queryVector,match_count:8})}),
-      db('rpc/search_knowledge',{method:'POST',body:JSON.stringify({query_text:query,match_count:8})})
+      db('rpc/match_knowledge_semantic',{method:'POST',body:JSON.stringify({query_embedding:queryVector,match_count:30})}),
+      db('rpc/search_knowledge',{method:'POST',body:JSON.stringify({query_text:query,match_count:30})})
     ])
     const intentTopics=new Set(intent.topics),preferred=new Set(intent.preferred_slugs||[])
     const ranked=merge(semantic,lexical).filter(x=>allowed.has(x.slug)&&intentTopics.has(slugTopic.get(x.slug))&&(!preferred.size||preferred.has(x.slug)))
