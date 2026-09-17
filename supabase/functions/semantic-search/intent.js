@@ -69,10 +69,10 @@ export function detectIntent(text) {
     return intent('disability_old_age_transition', 'переход с инвалидности на пособие по старости', ['old_age'], 'disability_transition', slugs, 'инвалидность → старость')
   }
 
-  // For someone already receiving long-term care, worsening means reassessment of care first; the filing-age boundary is enough for the initial disability question.
+  // For someone already receiving long-term care, worsening means reassessment of care first; the filing-age boundary and benefit interaction are separate decisive facts.
   if (/(?:помощ[ьи]\s+по\s+уход|метапел|с[иі]юд|סיעוד)/iu.test(q)
       && /(?:увелич|больше\s+час|ухудш|операц|онколог)/iu.test(q)) {
-    return intent('long_term_care_worsening', 'ухудшение состояния и увеличение помощи по уходу', ['old_age','disability'], 'care_reassessment', ['long-term-care-worsening-reassessment','disability-application-retirement-boundary'], 'уход + ухудшение состояния')
+    return intent('long_term_care_worsening', 'ухудшение состояния и увеличение помощи по уходу', ['old_age','disability'], 'care_reassessment', ['long-term-care-worsening-reassessment','long-term-care-benefit-interactions','disability-application-retirement-boundary'], 'уход + ухудшение состояния')
   }
 
   // Calendar entitlement window and bank of payable unemployment days are different concepts.
