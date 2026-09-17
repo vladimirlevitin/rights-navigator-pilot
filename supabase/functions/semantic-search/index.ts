@@ -6,7 +6,7 @@ const URL = Deno.env.get('SUPABASE_URL')!
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY')!
 const EMBED_MODEL = 'text-embedding-3-small'
 const ANSWER_MODEL = 'gpt-5-mini'
-const FUNCTION_VERSION = '34-operational-playbooks'
+const FUNCTION_VERSION = '35-operational-playbooks'
 const ORIGINS = new Set(['https://vladimirlevitin.github.io','http://localhost:8000','http://127.0.0.1:8000'])
 
 function named(name:string):Record<string,string>{try{return JSON.parse(Deno.env.get(name)||'{}')}catch{return {}}}
@@ -86,6 +86,7 @@ function controlledQuestion(intent:any,clarifications:any[],explicitFacts:any[],
     if(!known.has('halat_duration'))return{ask:true,key:'halat_duration',text:'На какой срок оформлен ХАЛАТ?',why:'Продолжительность отпуска влияет на возможность получения авталы.',options:[{label:'Меньше 30 дней',value:'under_30'},{label:'30 дней или больше',value:'at_least_30'},{label:'Дата окончания не указана',value:'unknown'}]}
     if(!known.has('paid_leave'))return{ask:true,key:'paid_leave',text:'Остались ли у вас неиспользованные оплачиваемые дни отпуска?',why:'Их наличие может повлиять на начало выплаты.',options:[{label:'Да',value:'yes'},{label:'Нет',value:'no'},{label:'Не знаю',value:'unknown'}]}
   }
+  if(intent.key==='unemployment'&&intent.focus==='payment_timing'&&known.has('five_day_rule_scope'))return{ask:false,key:'',text:'',why:'',options:[]}
   if(intent.key==='long_term_care_worsening'&&/инвалид/iu.test(question)&&!known.has('disability_filing_window'))return{ask:true,key:'disability_filing_window',text:'Где вы сейчас относительно своего пенсионного возраста?',why:'Это решает, можно ли ещё использовать срок подачи первичного заявления на общую инвалидность; увеличение помощи по уходу проверяется отдельно.',options:[{label:'Ещё не достигла пенсионного возраста',value:'before_retirement'},{label:'Достигла менее 12 месяцев назад',value:'within_12_months'},{label:'Достигла более 12 месяцев назад',value:'over_12_months'},{label:'Не знаю',value:'unknown'}]}
   if(intent.key==='disability_change'&&known.has('termination_reason')&&known.has('new_disability_degree'))return{ask:false,key:'',text:'',why:'',options:[]}
   if(intent.key==='disability'&&intent.focus==='work_income_65'&&known.has('disability_degree'))return{ask:false,key:'',text:'',why:'',options:[]}
