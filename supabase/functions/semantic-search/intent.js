@@ -64,15 +64,15 @@ export function detectIntent(text) {
   if (/(?:инвалид|нетрудоспособ|нехут|נכות)/iu.test(q)
       && /(?:переход|перейд|вместо\s+инвалид|перед\s+переход)/iu.test(q)
       && /(?:пособи[ея]\s+по\s+старост|пенсионн[а-яё]*\s+возраст|אזרח\s+ותיק)/iu.test(q)) {
-    const slugs = ['disability-to-old-age-transition']
+    const slugs = ['disability-to-old-age-transition','old-age-disability-recipient-qualifying-exemption']
     if (/1966/iu.test(q)) slugs.push('old-age-retirement-age-woman-1966')
     return intent('disability_old_age_transition', 'переход с инвалидности на пособие по старости', ['old_age'], 'disability_transition', slugs, 'инвалидность → старость')
   }
 
-  // For someone already receiving long-term care, worsening means reassessment of care first.
+  // For someone already receiving long-term care, worsening means reassessment of care first; filing age for general disability remains a separate decisive fact.
   if (/(?:помощ[ьи]\s+по\s+уход|метапел|с[иі]юд|סיעוד)/iu.test(q)
       && /(?:увелич|больше\s+час|ухудш|операц|онколог)/iu.test(q)) {
-    return intent('long_term_care_worsening', 'ухудшение состояния и увеличение помощи по уходу', ['old_age','disability'], 'care_reassessment', ['long-term-care-worsening-reassessment','disability-first-application'], 'уход + ухудшение состояния')
+    return intent('long_term_care_worsening', 'ухудшение состояния и увеличение помощи по уходу', ['old_age','disability'], 'care_reassessment', ['long-term-care-worsening-reassessment','disability-application-retirement-boundary','disability-first-application'], 'уход + ухудшение состояния')
   }
 
   // Calendar entitlement window and bank of payable unemployment days are different concepts.
