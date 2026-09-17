@@ -7,9 +7,9 @@ function intent(key, label, topics, focus, preferred_slugs, matched_term, confid
 export function detectIntent(text) {
   const q = String(text || '').toLowerCase()
 
-  // Specific unemployment payment rule must win over the broader 300-day scenario.
+  // Specific unemployment payment rule must win over the broader 300-day scenario, including common wording "5 неоплачиваемых дней".
   if (/(?:автал|безработ|пособи[ея]\s+по\s+безработ)/iu.test(q)
-      && /(?:(?:5|пять)\s+дн.{0,55}(?:не\s+оплат|без\s+оплат|удерж|кажд|четыр|тр[её]х|4\s*месяц|3\s*месяц)|(?:не\s+оплат|без\s+оплат|удерж).{0,45}(?:5|пять)\s+дн)/iu.test(q)) {
+      && /(?:(?:5|пять)\s+(?:неоплачиваем[а-яё]*\s+)?дн.{0,55}(?:не\s+оплат|без\s+оплат|удерж|кажд|четыр|тр[её]х|4\s*месяц|3\s*месяц|уменьш|лимит)|(?:не\s+оплат|без\s+оплат|удерж).{0,45}(?:5|пять)\s+дн|(?:5|пять)\s+неоплачиваем[а-яё]*\s+дн)/iu.test(q)) {
     return intent('unemployment', 'пособие по безработице — автала', ['unemployment'], 'payment_timing', ['payment-timing'], 'пять неоплачиваемых дней')
   }
 
@@ -164,7 +164,7 @@ export function extractExplicitFacts(text) {
     upsert('question_scope', 'Тип вопроса', 'общий вопрос о правиле, а не о личной дате рождения')
   }
 
-  if (/(?:(?:первые\s+)?(?:5|пять)\s+дн[^\n]{0,50}(?:не\s+оплат|без\s+оплат)|(?:не\s+оплат|без\s+оплат)[^\n]{0,50}(?:5|пять)\s+дн)/iu.test(q)) {
+  if (/(?:(?:первые\s+)?(?:5|пять)\s+(?:неоплачиваем[а-яё]*\s+)?дн[^\n]{0,50}(?:не\s+оплат|без\s+оплат|уменьш|лимит)|(?:не\s+оплат|без\s+оплат)[^\n]{0,50}(?:5|пять)\s+дн|(?:5|пять)\s+неоплачиваем[а-яё]*\s+дн)/iu.test(q)) {
     upsert('five_day_rule_scope', 'Тип вопроса', 'вопрос именно об общем правиле первых пяти неоплачиваемых дней')
   }
 
@@ -172,8 +172,10 @@ export function extractExplicitFacts(text) {
     upsert('vacation_balance', 'Остаток ежегодного отпуска', '0 дней; в вопросе прямо сказано, что отпускных нет')
   }
 
-  const incapacity = q.match(/(\d{2,3})\s*%[^\n]{0,35}(?:утрат[а-яё]*|потер[яи]|нетрудоспособ)/iu)
-    || q.match(/(?:утрат[а-яё]*|потер[яи]|нетрудоспособ)[^\d\n]{0,35}(\d{2,3})\s*%/iu)
+  // Prefer the percentage directly adjacent to the incapacity phrase; broad fallback is only used when necessary.
+  const incapacity = q.match(/(\d{2,3})\s*%\s*(?:утрат[а-яё]*|потер[яи]|нетрудоспособ)/iu)
+    || q.match(/(?:утрат[а-яё]*|потер[яи]|нетрудоспособ)[^\d\n]{0,15}(\d{2,3})\s*%/iu)
+    || q.match(/(\d{2,3})\s*%[^\n]{0,35}(?:утрат[а-яё]*|потер[яи]|нетрудоспособ)/iu)
   if (incapacity) upsert('disability_degree', 'Степень потери трудоспособности', incapacity[1] + '%')
 
   const medical = q.match(/(\d{2,3})\s*%[^\n]{0,25}медицинск[а-яё]*\s+инвалид/iu)
