@@ -13,16 +13,75 @@ export function detectIntent(text) {
     return intent('unemployment', 'пособие по безработице — автала', ['unemployment'], 'payment_timing', ['payment-timing'], 'пять неоплачиваемых дней')
   }
 
+  // Tax refund after a provident/pension-fund withdrawal is not a severance-entitlement question.
+  if (/(?:пенсионн[а-яё]*\s+(?:фонд|касс)|накоплен|кופת|קופת)/iu.test(q)
+      && /(?:35\s*%|налог|удерж)/iu.test(q)
+      && /(?:вернут|возврат|ретроактив|шест[ьи]\s+лет|6\s+лет|инвалид)/iu.test(q)) {
+    return intent('pension_withdrawal_tax', 'налог при снятии пенсионных накоплений', ['tax'], 'provident_withdrawal_tax', ['provident-withdrawal-relative-disability-75','tax-refund-six-years'], 'снятие накоплений + удержанный налог')
+  }
+
   // Tax on severance is a separate problem from entitlement to severance.
   if ((/(?:35\s*%|налог|удержан[а-яё]*\s+налог)/iu.test(q) && /пиц|выходн[а-яё]*\s+пособ/iu.test(q))
       || (/пиц|выходн[а-яё]*\s+пособ/iu.test(q) && /(?:35\s*%|налог)/iu.test(q))) {
     return intent('severance_tax', 'налогообложение пицуим', ['severance'], 'severance_tax', ['severance-tax-exemption-2026','severance-tax-disability-exemption','severance-form-161-tax'], 'пицуим + налог')
   }
 
+  // If health is explicitly the reason for resigning, it is the decisive severance rule even after retirement age.
+  if (/(?:пиц|выходн[а-яё]*\s+пособ)/iu.test(q)
+      && /(?:увол|уйти|уш[её]л|ушла|прекрат)/iu.test(q)
+      && /(?:по\s+состояни[юя]\s+здоров|из-за\s+(?:болезн|здоров)|болезн[ьи]|здоровь)/iu.test(q)) {
+    const slugs = ['severance-health-resignation','severance-basic-right']
+    if (/пенсион|пенси[яи]|71\s+год|после\s+выхода\s+на\s+пенси/iu.test(q)) slugs.push('severance-retirement-resignation')
+    return intent('severance_health', 'пицуим при увольнении по состоянию здоровья', ['severance'], 'health_resignation', slugs, 'увольнение по состоянию здоровья')
+  }
+
   // A mutual termination agreement must be checked separately for severance and unemployment.
   if (/соглашени[а-яё]*\s+сторон|по\s+взаимн[а-яё]*\s+соглас/iu.test(q)
       && /увол|прекращ|пиц|выходн[а-яё]*\s+пособ|безработ|автал/iu.test(q)) {
     return intent('termination_agreement', 'прекращение работы по соглашению сторон', ['severance','unemployment'], 'termination_agreement', ['termination-agreement-severance','termination-agreement-unemployment'], 'соглашение сторон')
+  }
+
+  // Real public-housing refusals have different consequences depending on the authority managing the queue.
+  if (/(?:социальн[а-яё]*\s+(?:жиль|квартир)|общественн[а-яё]*\s+жиль|דיור\s+ציבורי)/iu.test(q)
+      && /(?:отказ|сирув|сирев|сирувим|סרב|סירוב)/iu.test(q)) {
+    return intent('housing_refusal', 'отказ от предложения социального жилья', ['housing_support'], 'public_housing_refusal', ['housing-aliyah-refusal-three','housing-ministry-refusal-two'], 'социальное жильё + отказ')
+  }
+
+  // Missed/late rent assistance is a recovery process, not a generic eligibility question.
+  if (/помощ[ьи]\s+(?:на|по)\s+аренд|аренд[а-яё]*\s+помощ/iu.test(q)
+      && /(?:ретроактив|недополуч|предыдущ|раньше|с\s+август|ошибк[а-яё]*\s+(?:министер|ведом)|не\s+поступ)/iu.test(q)) {
+    return intent('housing_retroactive', 'ретроактивный перерасчёт помощи на аренду', ['housing_support'], 'rent_retroactive', ['housing-rent-retroactive-differences','housing-assistance-update-details'], 'недополученная помощь на аренду')
+  }
+
+  // Single-parent rent assistance + new business requires an income-basis check.
+  if (/(?:одинок[а-яё]*\s+(?:родител|мать|отец)|мать[- ]одиноч|חד.?הור)/iu.test(q)
+      && /(?:помощ[ьи]\s+(?:на|по)\s+аренд|аренд[а-яё]*\s+помощ)/iu.test(q)
+      && /(?:бизнес|осек|самозанят|ацмаи|עצמאי)/iu.test(q)) {
+    return intent('housing_single_parent_income', 'помощь на аренду одинокому родителю и доход', ['housing_support'], 'single_parent_income', ['housing-single-parent-income-test'], 'одинокий родитель + аренда + бизнес')
+  }
+
+  // Existing disability recipient transitioning to old age is not an ordinary first old-age claim.
+  if (/(?:инвалид|нетрудоспособ|нехут|נכות)/iu.test(q)
+      && /(?:переход|перейд|вместо\s+инвалид|перед\s+переход)/iu.test(q)
+      && /(?:пособи[ея]\s+по\s+старост|пенсионн[а-яё]*\s+возраст|אזרח\s+ותיק)/iu.test(q)) {
+    const slugs = ['disability-to-old-age-transition']
+    if (/1966/iu.test(q)) slugs.push('old-age-retirement-age-woman-1966')
+    return intent('disability_old_age_transition', 'переход с инвалидности на пособие по старости', ['old_age'], 'disability_transition', slugs, 'инвалидность → старость')
+  }
+
+  // For someone already receiving long-term care, worsening means reassessment of care first.
+  if (/(?:помощ[ьи]\s+по\s+уход|метапел|с[иі]юд|סיעוד)/iu.test(q)
+      && /(?:увелич|больше\s+час|ухудш|операц|онколог)/iu.test(q)) {
+    return intent('long_term_care_worsening', 'ухудшение состояния и увеличение помощи по уходу', ['old_age','disability'], 'care_reassessment', ['long-term-care-worsening-reassessment','disability-first-application'], 'уход + ухудшение состояния')
+  }
+
+  // Calendar entitlement window and bank of payable unemployment days are different concepts.
+  if (/(?:автал|безработ|пособи[ея]\s+по\s+безработ)/iu.test(q)
+      && /300\s*(?:дн|дней)/iu.test(q)
+      && /(?:срок\s+(?:реализац|прав)|прав[оа].{0,40}до\s+\d|до\s+31|законч[а-яё]*\s+(?:дни|300)|прерыва[а-яё]*\s+период|вернул[а-яё]*\s+на\s+(?:ту\s+же\s+)?работ)/iu.test(q)) {
+    const slugs = ['unemployment-entitlement-window-vs-days','unemployment-women-57-67-300']
+    if (/(?:нов[а-яё]*\s+период|откры[а-яё]*\s+нов|после\s+увольнен)/iu.test(q)) slugs.push('qualifying-period')
+    return intent('unemployment_entitlement_window', 'срок реализации авталы и банк дней', ['unemployment'], 'entitlement_window', slugs, '300 дней + календарный срок права')
   }
 
   // Salary arrears/differences paid in one month can distort old-age income tests if the period is not reported.
@@ -38,10 +97,12 @@ export function detectIntent(text) {
     return intent('severance_pre_retirement', 'пицуим до достижения пенсионного возраста', ['severance'], 'pre_retirement', ['severance-before-retirement-age','severance-basic-right'], 'уход до пенсионного возраста')
   }
 
-  // Old-age benefit and unemployment can coexist for an eligible woman; resignation timing is separate.
+  // Old-age benefit and unemployment can coexist; only add resignation procedure when the question actually asks about it.
   if (/(?:пособи[ея]\s+по\s+старост|кицват\s+зикн|אזרח\s+ותיק)/iu.test(q)
       && /безработ|автал|דמי\s+אבטלה/iu.test(q)) {
-    return intent('old_age_unemployment', 'пособие по старости и автала', ['unemployment'], 'old_age_concurrent', ['unemployment-old-age-concurrent-woman','unemployment-voluntary-register-immediately'], 'старость + безработица')
+    const slugs = ['unemployment-old-age-concurrent-woman']
+    if (/(?:увол|по\s+собственн|90\s*дн|тр[её]хмесяч|когда.{0,30}подав|когда.{0,30}регистр)/iu.test(q)) slugs.push('unemployment-voluntary-register-immediately')
+    return intent('old_age_unemployment', 'пособие по старости и автала', ['unemployment'], 'old_age_concurrent', slugs, 'старость + безработица')
   }
 
   // Private/pension-fund loss-of-capacity payment intersects both disability and unemployment.
@@ -71,52 +132,83 @@ export function extractExplicitFacts(text) {
   const q = String(text || '').toLowerCase()
   const facts = baseExtractExplicitFacts(text).filter(x => x.key !== 'tenure')
 
-  // Recompute tenure conservatively so ages such as "23 лет" or "до 67 лет"
-  // are not mistaken for years worked.
+  function upsert(key, label, value) {
+    const i = facts.findIndex(x => x.key === key)
+    if (i >= 0) facts[i] = { key, label, value }
+    else facts.push({ key, label, value })
+  }
+
+  // Recompute tenure conservatively so ages such as "23 лет" or "до 67 лет" are not mistaken for years worked.
   let tenure = q.match(/(?:проработал[аи]?|работал[аи]?|работаю|работает|работал)[а-яё]*[^\d\n.]{0,45}(\d{1,2})\s*(год|года|лет|месяц|месяца|месяцев)/iu)
     || q.match(/(\d{1,2})\s*(год|года|лет|месяц|месяца|месяцев)\s+(?:про)?работал[аи]?[а-яё]*/iu)
     || q.match(/стаж[^\d]{0,20}(\d{1,2})\s*(год|года|лет|месяц|месяца|месяцев)/iu)
     || q.match(/послед[а-яё]*\s+(\d{1,2})\s*(год|года|лет|месяц|месяца|месяцев)[^\n.]{0,45}(?:нов[а-яё]*\s+работодател|у\s+нов[а-яё]*\s+работодател)/iu)
-  if (tenure) facts.push({ key: 'tenure', label: 'Стаж у работодателя', value: tenure[1] + ' ' + tenure[2] })
-  else if (/два\s+года.{0,30}работа[а-яё]*|работа[а-яё]*.{0,30}два\s+года/iu.test(q)) facts.push({ key: 'tenure', label: 'Стаж у работодателя', value: '2 года' })
-  else if (/восемь\s+лет.{0,30}работа[а-яё]*|работа[а-яё]*.{0,30}восемь\s+лет/iu.test(q)) facts.push({ key: 'tenure', label: 'Стаж у работодателя', value: '8 лет' })
+  if (tenure) upsert('tenure', 'Стаж у работодателя', tenure[1] + ' ' + tenure[2])
+  else if (/два\s+года.{0,30}работа[а-яё]*|работа[а-яё]*.{0,30}два\s+года/iu.test(q)) upsert('tenure', 'Стаж у работодателя', '2 года')
+  else if (/восемь\s+лет.{0,30}работа[а-яё]*|работа[а-яё]*.{0,30}восемь\s+лет/iu.test(q)) upsert('tenure', 'Стаж у работодателя', '8 лет')
+
+  if (/начал[аи]?\s+работа[а-яё]*.{0,70}после.{0,40}(?:пенсионн[а-яё]*\s+возраст|выхода\s+на\s+пенси)|после.{0,40}(?:пенсионн[а-яё]*\s+возраст|выхода\s+на\s+пенси).{0,70}начал[аи]?\s+работа/iu.test(q)) {
+    upsert('start_after_pension', 'Начало работы относительно пенсионного возраста', 'работа у этого работодателя началась после достижения пенсионного возраста')
+  }
+
+  if (/(?:министерств[а-яё]*\s+(?:алии|абсорбц)|משרד\s+העלייה|קליטה)/iu.test(q)) {
+    upsert('housing_queue_authority', 'Ведомство очереди на жильё', 'Министерство алии и интеграции')
+  } else if (/(?:министерств[а-яё]*\s+(?:строительств|жилищ)|משרד\s+הבינוי)/iu.test(q)) {
+    upsert('housing_queue_authority', 'Ведомство очереди на жильё', 'Министерство строительства и жилищного хозяйства')
+  }
+
+  const birthYear = q.match(/(?:родил[а-яё]*|рождени[яе]|года\s+рождения)[^\d]{0,15}(19\d{2}|20\d{2})|(19\d{2}|20\d{2})\s+года\s+рожд/iu)
+  if (birthYear) upsert('birth_year', 'Год рождения', String(birthYear[1] || birthYear[2]))
 
   if (/какой\s+возраст\s+считается.{0,80}(?:300\s*(?:дн|дней)|пособи[ея]\s+по\s+безработ)/iu.test(q)) {
-    facts.push({ key: 'question_scope', label: 'Тип вопроса', value: 'общий вопрос о правиле, а не о личной дате рождения' })
+    upsert('question_scope', 'Тип вопроса', 'общий вопрос о правиле, а не о личной дате рождения')
   }
 
   if (/(?:(?:первые\s+)?(?:5|пять)\s+дн[^\n]{0,50}(?:не\s+оплат|без\s+оплат)|(?:не\s+оплат|без\s+оплат)[^\n]{0,50}(?:5|пять)\s+дн)/iu.test(q)) {
-    facts.push({ key: 'five_day_rule_scope', label: 'Тип вопроса', value: 'вопрос именно об общем правиле первых пяти неоплачиваемых дней' })
+    upsert('five_day_rule_scope', 'Тип вопроса', 'вопрос именно об общем правиле первых пяти неоплачиваемых дней')
   }
 
   if (/нет\s+отпускн|нет\s+дн[а-яё]*\s+отпуск|0\s+дн[а-яё]*\s+отпуск/iu.test(q)) {
-    facts.push({ key: 'vacation_balance', label: 'Остаток ежегодного отпуска', value: '0 дней; в вопросе прямо сказано, что отпускных нет' })
+    upsert('vacation_balance', 'Остаток ежегодного отпуска', '0 дней; в вопросе прямо сказано, что отпускных нет')
   }
 
   const incapacity = q.match(/(\d{2,3})\s*%[^\n]{0,35}(?:утрат[а-яё]*|потер[яи]|нетрудоспособ)/iu)
     || q.match(/(?:утрат[а-яё]*|потер[яи]|нетрудоспособ)[^\d\n]{0,35}(\d{2,3})\s*%/iu)
-  if (incapacity && !facts.some(x => x.key === 'disability_degree')) {
-    facts.push({ key: 'disability_degree', label: 'Степень потери трудоспособности', value: incapacity[1] + '%' })
-  }
+  if (incapacity) upsert('disability_degree', 'Степень потери трудоспособности', incapacity[1] + '%')
 
   const medical = q.match(/(\d{2,3})\s*%[^\n]{0,25}медицинск[а-яё]*\s+инвалид/iu)
     || q.match(/медицинск[а-яё]*\s+инвалид[^\d\n]{0,25}(\d{2,3})\s*%/iu)
-  if (medical) facts.push({ key: 'medical_disability_degree', label: 'Медицинская инвалидность', value: medical[1] + '%' })
+  if (medical) upsert('medical_disability_degree', 'Медицинская инвалидность', medical[1] + '%')
+
+  if (/постоянн[а-яё]*[^\n]{0,45}(?:медицинск[а-яё]*\s+инвалид|инвалид)|(?:инвалид|нетрудоспособ)[^\n]{0,45}постоянн/iu.test(q)) {
+    upsert('disability_permanent', 'Срок инвалидности', 'в вопросе инвалидность указана как постоянная')
+  }
 
   const reduced = q.match(/(?:снижа[а-яё]*|сниз[а-яё]*|уменьша[а-яё]*)[^\d\n]{0,35}(\d{2,3})\s*%/iu)
-  if (reduced) facts.push({ key: 'new_disability_degree', label: 'Новая степень инвалидности/нетрудоспособности', value: reduced[1] + '%' })
+  if (reduced) upsert('new_disability_degree', 'Новая степень инвалидности/нетрудоспособности', reduced[1] + '%')
 
   if (/(?:снижа[а-яё]*|сниз[а-яё]*|уменьша[а-яё]*).{0,90}(?:инвалид|степен|процент).{0,120}(?:пособи[ея]\s+прекращ|пособи[ея]\s+отмен|прекраща[а-яё]*\s+пособ)|(?:пособи[ея]\s+прекращ|пособи[ея]\s+отмен).{0,120}(?:снижа[а-яё]*|сниз[а-яё]*|уменьша[а-яё]*)/iu.test(q)) {
-    facts.push({ key: 'termination_reason', label: 'Причина прекращения пособия', value: 'в вопросе указано, что пособие прекращается из-за снижения степени инвалидности' })
+    upsert('termination_reason', 'Причина прекращения пособия', 'в вопросе указано, что пособие прекращается из-за снижения степени инвалидности')
   }
 
   if (/с\s*(?:1|01)(?:[.\/-]0?9)?\s*(?:сентябр[яья]?|09)?/iu.test(q) && /пособи[ея]\s+прекращ|прекраща[а-яё]*\s+пособ/iu.test(q)) {
-    facts.push({ key: 'benefit_end_date', label: 'Дата прекращения пособия', value: 'с 1 сентября; право заявлено действующим по 31 августа' })
+    upsert('benefit_end_date', 'Дата прекращения пособия', 'с 1 сентября; право заявлено действующим по 31 августа')
   }
 
-  if (/социальн[а-яё]*\s+надбав|доплат[а-яё]*\s+до\s+прожиточ/iu.test(q) && !facts.some(x => x.key === 'old_age_topup')) {
-    facts.push({ key: 'old_age_topup', label: 'Доплата к пособию по старости', value: 'социальная надбавка / доплата до прожиточного минимума указана в вопросе' })
+  if (/социальн[а-яё]*\s+надбав|доплат[а-яё]*\s+до\s+прожиточ/iu.test(q)) {
+    upsert('old_age_topup', 'Доплата к пособию по старости', 'социальная надбавка / доплата до прожиточного минимума указана в вопросе')
   }
+
+  if (/получа[а-яё]*.{0,35}(?:помощ[ьи]\s+по\s+уход|метапел|с[иі]юд)|(?:помощ[ьи]\s+по\s+уход|метапел|с[иі]юд).{0,35}получа/iu.test(q)) {
+    upsert('long_term_care_status', 'Пособие/помощь по уходу', 'уже получает помощь по уходу')
+  }
+
+  if (/300\s*(?:дн|дней).{0,80}(?:законч|использ|выплачен)|(?:все|300).{0,50}(?:дни|дней).{0,40}(?:законч|выплачен|использ)/iu.test(q)) {
+    upsert('entitlement_days_status', 'Статус дней авталы', 'в вопросе указано, что назначенный лимит 300 дней уже исчерпан')
+  }
+
+  const deadline = q.match(/до\s+(\d{1,2})\s+(январ[яья]|феврал[яья]|март[а-яё]*|апрел[яья]|ма[яй]|июн[яья]|июл[яья]|август[а-яё]*|сентябр[яья]|октябр[яья]|ноябр[яья]|декабр[яья])\s+(20\d{2})/iu)
+  if (deadline) upsert('entitlement_deadline', 'Календарный срок реализации права', `до ${deadline[1]} ${deadline[2]} ${deadline[3]} года`)
 
   return facts
 }
