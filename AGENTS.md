@@ -1,5 +1,17 @@
 # Rights Navigator — project instructions
 
+## Current Facebook collection workflow
+
+The active Facebook collector is **Codex controlling the official Chrome extension and the user's existing Facebook session**.
+
+The Workspace/Agent named **«Коллектор» is currently inactive**. Do not describe it as collecting Facebook data, do not assign current Facebook browsing to it, and do not confuse its role with Codex.
+
+For Facebook benchmark collection, follow `docs/codex-facebook-collection.md`. The default credit-efficient loop is:
+
+`one Codex task -> 10 new accepted real cases -> one inbox JSON -> stop -> separate analysis/fixes -> next 10`
+
+Codex should spend credits primarily on the live Chrome/Facebook work that cannot be done by the rest of the workflow. During collection it should not perform legal research, verify Tatiana's answers, redesign the product, change Supabase/code, or produce long case analyses. If an existing batch runner can send all 10 questions to Navigator in one command, it may be used once; otherwise stop after collection rather than inventing automation inside the collection task.
+
 ## Core product principle
 
 Rights Navigator is not a rewritten ChatGPT answer and not a catalog of rights. Its distinctive value is a practical action layer built from real cases.
