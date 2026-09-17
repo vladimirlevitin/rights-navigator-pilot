@@ -69,10 +69,10 @@ export function detectIntent(text) {
     return intent('disability_old_age_transition', 'переход с инвалидности на пособие по старости', ['old_age'], 'disability_transition', slugs, 'инвалидность → старость')
   }
 
-  // For someone already receiving long-term care, worsening means reassessment of care first; filing age for general disability remains a separate decisive fact.
+  // For someone already receiving long-term care, worsening means reassessment of care first; the filing-age boundary is enough for the initial disability question.
   if (/(?:помощ[ьи]\s+по\s+уход|метапел|с[иі]юд|סיעוד)/iu.test(q)
       && /(?:увелич|больше\s+час|ухудш|операц|онколог)/iu.test(q)) {
-    return intent('long_term_care_worsening', 'ухудшение состояния и увеличение помощи по уходу', ['old_age','disability'], 'care_reassessment', ['long-term-care-worsening-reassessment','disability-application-retirement-boundary','disability-first-application'], 'уход + ухудшение состояния')
+    return intent('long_term_care_worsening', 'ухудшение состояния и увеличение помощи по уходу', ['old_age','disability'], 'care_reassessment', ['long-term-care-worsening-reassessment','disability-application-retirement-boundary'], 'уход + ухудшение состояния')
   }
 
   // Calendar entitlement window and bank of payable unemployment days are different concepts.
@@ -112,10 +112,18 @@ export function detectIntent(text) {
     return intent('private_disability_pension', 'выплата по потере трудоспособности и государственные пособия', ['disability','unemployment'], 'private_disability_pension', ['unemployment-private-disability-pension','disability-nonwork-income-dependents'], 'потеря трудоспособности из фонда + пособия')
   }
 
-  // Benefit termination after a reduction in disability degree: payment date + ancillary benefits.
+  // Benefit termination after a reduction in disability degree: payment date + ancillary benefits. Income support is a separate right, not unemployment.
   if (/(?:снижа[а-яё]*|сниз[а-яё]*|уменьша[а-яё]*).{0,70}(?:инвалид|степен|процент)|(?:пособи[ея].{0,50}прекращ|прекраща[а-яё]*.{0,50}пособи[ея])/iu.test(q)
       && /(?:28|арнон|проезд|транспорт|прожиточ|инвалид)/iu.test(q)) {
-    return intent('disability_change', 'изменение степени инвалидности и прекращение пособия', ['disability'], 'benefit_reduction_end', ['disability-payment-current-month','disability-arnona-thresholds','disability-transport-card-validity','disability-stop-work'], 'снижение степени + прекращение пособия')
+    const topics = ['disability']
+    const slugs = ['disability-payment-current-month','disability-arnona-thresholds','disability-transport-card-validity']
+    if (/(?:прожиточ|обеспечени[а-яё]*\s+доход|הבטחת\s+הכנסה)/iu.test(q)) {
+      topics.push('income_support')
+      slugs.push('income-support-after-disability-end')
+    } else {
+      slugs.push('disability-stop-work')
+    }
+    return intent('disability_change', 'изменение степени инвалидности и прекращение пособия', topics, 'benefit_reduction_end', slugs, 'снижение степени + прекращение пособия')
   }
 
   // During the 2026 Shaagat HaAri arrangement, self-employed income uses a special declaration.
