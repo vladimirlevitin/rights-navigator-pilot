@@ -6,7 +6,7 @@ const URL = Deno.env.get('SUPABASE_URL')!
 const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY')!
 const EMBED_MODEL = 'text-embedding-3-small'
 const ANSWER_MODEL = 'gpt-5-mini'
-const FUNCTION_VERSION = '24-housing-household'
+const FUNCTION_VERSION = '34-operational-playbooks'
 const ORIGINS = new Set(['https://vladimirlevitin.github.io','http://localhost:8000','http://127.0.0.1:8000'])
 
 function named(name:string):Record<string,string>{try{return JSON.parse(Deno.env.get(name)||'{}')}catch{return {}}}
@@ -59,6 +59,7 @@ async function synthesize(question:string,clarifications:any[],results:any[],int
     'Каждый вывод и шаг должен ссылаться только на slug материала. Без подтверждения не утверждай.',
     'DETECTED_INTENT определён серверным классификатором и задаёт границу темы. Не подменяй его соседним видом права.',
     'Для пицуим по здоровью не утверждай, что заболевание должно быть вызвано работой. Важна связь состояния здоровья с решением прекратить конкретную работу.',
+    'Если focus равен care_reassessment и пользователь одновременно спрашивает о первичном оформлении общей инвалидности, не утверждай, что новое пособие по общей инвалидности можно оформить, пока не установлено положение пользователя относительно пенсионного возраста. Срок подачи заявления и условия самого права — не одно и то же.',
     'Если focus равен income_supplement, не складывай автоматически все пособия и другие выплаты семьи и не сравнивай эту сумму с 6 912. Эта сумма применима только к категории, прямо указанной в материалах; сначала классифицируй каждый вид дохода и отдельно учитывай финансовые активы.',
     'Если focus равен benefits_and_bills, не утверждай, что отсутствие доплаты до прожиточного минимума исключает все льготы пожилого гражданина: используй отдельные карточки по каждой льготе.',
     'Если focus равен institution_and_housing, не говори, что о школе-интернате обязательно нужно сообщить жилищной компании только из-за самого факта обучения или ночёвок. Обязанность по жилищной части связывай только с подтверждённым изменением личного статуса или числа детей/состава семьи из соответствующей карточки; при неясности сначала уточни статус.',
@@ -85,6 +86,8 @@ function controlledQuestion(intent:any,clarifications:any[],explicitFacts:any[],
     if(!known.has('halat_duration'))return{ask:true,key:'halat_duration',text:'На какой срок оформлен ХАЛАТ?',why:'Продолжительность отпуска влияет на возможность получения авталы.',options:[{label:'Меньше 30 дней',value:'under_30'},{label:'30 дней или больше',value:'at_least_30'},{label:'Дата окончания не указана',value:'unknown'}]}
     if(!known.has('paid_leave'))return{ask:true,key:'paid_leave',text:'Остались ли у вас неиспользованные оплачиваемые дни отпуска?',why:'Их наличие может повлиять на начало выплаты.',options:[{label:'Да',value:'yes'},{label:'Нет',value:'no'},{label:'Не знаю',value:'unknown'}]}
   }
+  if(intent.key==='long_term_care_worsening'&&/инвалид/iu.test(question)&&!known.has('disability_filing_window'))return{ask:true,key:'disability_filing_window',text:'Где вы сейчас относительно своего пенсионного возраста?',why:'Это решает, можно ли ещё использовать срок подачи первичного заявления на общую инвалидность; увеличение помощи по уходу проверяется отдельно.',options:[{label:'Ещё не достигла пенсионного возраста',value:'before_retirement'},{label:'Достигла менее 12 месяцев назад',value:'within_12_months'},{label:'Достигла более 12 месяцев назад',value:'over_12_months'},{label:'Не знаю',value:'unknown'}]}
+  if(intent.key==='disability_change'&&known.has('termination_reason')&&known.has('new_disability_degree'))return{ask:false,key:'',text:'',why:'',options:[]}
   if(intent.key==='disability'&&intent.focus==='work_income_65'&&known.has('disability_degree'))return{ask:false,key:'',text:'',why:'',options:[]}
   if(intent.key==='disability'&&intent.focus==='work_and_benefit'&&!known.has('disability_degree'))return{ask:true,key:'disability_degree',text:'Какая степень потери трудоспособности указана в решении Битуах Леуми?',why:'От неё зависит таблица расчёта пособия при заработке.',options:[{label:'60% или 65%',value:'60_65'},{label:'74%',value:'74'},{label:'75% или 100%',value:'75_100'},{label:'Не знаю',value:'unknown'}]}
   if(intent.key==='old_age'&&intent.focus==='income_supplement'&&/страхов[а-яё]*\s+выплат/iu.test(question))return{ask:true,key:'insurance_payment_type',text:'Что это за страховая выплата и кто её выплачивает?',why:'Для доплаты к пособию по старости разные виды дохода учитываются по разным правилам; нельзя просто сложить все выплаты.',options:[{label:'Частная страховая или пенсионная компания',value:'private_insurance'},{label:'Битуах Леуми',value:'btl'},{label:'Другой источник',value:'other'},{label:'Не знаю',value:'unknown'}]}
